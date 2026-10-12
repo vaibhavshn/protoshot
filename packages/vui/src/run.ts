@@ -1,16 +1,20 @@
 import { parseArgs } from "node:util";
 import { UsageError, VuiError } from "./errors.ts";
+import { runInit } from "./init.ts";
 import { shoot } from "./shoot.ts";
 import type { Shot, SnippetInput } from "./types.ts";
 
 const USAGE = `Usage: vui <snippet-file> [options]
        vui -            read the snippet from stdin
        vui -e '<jsx>'   use the argument as the snippet
+       vui init         write vui.json, update .gitignore and AGENTS.md/CLAUDE.md
 
 Options:
   --viewport WxH   viewport size (default 1280x800)
   --scale N        device scale factor (default 2)
   --full           capture the whole viewport instead of cropping to the content
+  --export NAME    shoot one component export ("default" for the default export)
+  --all            shoot every component export
   --dark           render in dark mode
   --wait MS|SEL    extra wait: milliseconds, or a selector to wait for
   --json           print one JSON object per shot on stdout
@@ -28,6 +32,8 @@ export async function runCli(argv: string[]): Promise<number> {
         scale: { type: "string" },
         full: { type: "boolean" },
         dark: { type: "boolean" },
+        export: { type: "string" },
+        all: { type: "boolean" },
         wait: { type: "string" },
         json: { type: "boolean" },
       },
@@ -38,6 +44,11 @@ export async function runCli(argv: string[]): Promise<number> {
       return 0;
     }
     const [target] = positionals;
+    if (target === "init" && values.eval === undefined) {
+      const report = await runInit(process.cwd(), Boolean(process.stdin.isTTY));
+      process.stdout.write(`${report.join("\n")}\n`);
+      return 0;
+    }
     let input: SnippetInput;
     if (values.eval !== undefined) input = { code: values.eval };
     else if (target === "-") input = { code: await readStdin() };
@@ -51,6 +62,8 @@ export async function runCli(argv: string[]): Promise<number> {
       scale: parseScale(values.scale),
       full: values.full,
       dark: values.dark,
+      export: values.export,
+      all: values.all,
       wait: values.wait,
     });
     for (const shot of shots) process.stderr.write(describeProblems(shot));
