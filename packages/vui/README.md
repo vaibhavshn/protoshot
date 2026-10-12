@@ -100,7 +100,7 @@ Optional. vui finds the host root by walking up to the nearest `vui.json`, other
 | `darkClass` | `string`                 | Class added to `<html>` with `--dark`, for class-based dark mode. `--dark` also emulates `prefers-color-scheme: dark` and passes `colorScheme="dark"` to the wrapper. |
 | `alias`     | `Record<string, string>` | Extra import aliases, merged over `tsconfig.json` `compilerOptions.paths`. Targets are relative to the host root. `vui.json` wins on conflicts.                       |
 
-If the host has a `vite.config.*`, vui uses it (plugins, aliases, PostCSS). Otherwise it uses `@vitejs/plugin-react`, tsconfig paths and the aliases above.
+If the host has a `vite.config.*`, vui uses it (plugins, aliases, PostCSS). For an Astro host (an `astro.config.*` and no `vite.config.*`), vui evaluates the config and applies its `vite.plugins` (Tailwind, for example) and `vite.resolve.alias`, skipping Cloudflare plugins; Astro integrations and `astro:*` imports are not run. Otherwise it uses `@vitejs/plugin-react`, tsconfig paths and the aliases above.
 
 ## Notes
 

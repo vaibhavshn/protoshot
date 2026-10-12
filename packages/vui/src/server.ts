@@ -13,6 +13,7 @@ import {
 } from "./page/template.ts";
 import rendererSource from "./renderers/react.ts?raw";
 import { buildAliases } from "./aliases.ts";
+import { findAstroConfig, hasReactPlugin, loadAstroVite } from "./astro.ts";
 import { acquireLock } from "./lock.ts";
 import { importFromHost, resolveReact } from "./resolve.ts";
 import type { ShotError } from "./types.ts";
@@ -76,9 +77,10 @@ function vuiPlugin(options: ServerOptions, reactMajor: number): Plugin {
       plugins.unshift(...plugins.splice(self, 1));
     },
     transform(code, id) {
-      // Tailwind v4 skips gitignored directories, and .vui/ is one; point it at our snippets.
+      // Tailwind v4 skips gitignored directories (.vui/ is one) and files outside its base; name ours.
       if (!id.split("?")[0]!.endsWith(".css") || !TAILWIND_V4_IMPORT.test(code)) return;
-      return `${code}\n@source ${JSON.stringify(join(host.root, ".vui", "snippets"))};\n`;
+      const sources = [join(host.root, ".vui", "snippets"), snippet];
+      return `${code}\n${sources.map((dir) => `@source ${JSON.stringify(dir)};`).join("\n")}\n`;
     },
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
@@ -119,14 +121,20 @@ export async function startServer(options: ServerOptions): Promise<Server> {
   const react = resolveReact(host.root);
   const vite = await importFromHost<typeof import("vite")>("vite", host.root);
   const hostConfigFile = findViteConfig(host.root);
-  // Without a Vite config of its own, the host needs React's JSX transform and its tsconfig aliases.
-  const hostPlugins = hostConfigFile
-    ? []
-    : [
-        (
-          await importFromHost<{ default: () => Plugin }>("@vitejs/plugin-react", host.root)
-        ).default(),
-      ];
+  // Without a Vite config of its own, the host needs React's JSX transform and its tsconfig
+  // aliases. An Astro host keeps its Vite plugins (Tailwind...) in astro.config instead.
+  const astroConfigFile = hostConfigFile ? undefined : findAstroConfig(host.root);
+  const astro = astroConfigFile
+    ? await loadAstroVite(vite, host.root, astroConfigFile)
+    : { plugins: [], alias: [] };
+  const hostPlugins = hostConfigFile ? [] : astro.plugins;
+  if (!hostConfigFile && !hasReactPlugin(hostPlugins)) {
+    const pluginReact = await importFromHost<{ default: () => Plugin }>(
+      "@vitejs/plugin-react",
+      host.root,
+    );
+    hostPlugins.unshift(pluginReact.default());
+  }
 
   const errors: ShotError[] = [];
   const logger = vite.createLogger("error", { allowClearScreen: false });
@@ -170,7 +178,7 @@ export async function startServer(options: ServerOptions): Promise<Server> {
       clearScreen: false,
       logLevel: "silent",
       plugins: [...hostPlugins, vuiPlugin(options, react.major)],
-      resolve: { alias: buildAliases(host, !hostConfigFile) },
+      resolve: { alias: [...buildAliases(host, !hostConfigFile), ...astro.alias] },
       server: {
         host: "127.0.0.1",
         port: 0,

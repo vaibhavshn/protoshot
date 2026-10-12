@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 const root = join(import.meta.dirname, "..");
-const fixtures = ["react-vite-tailwind", "react-plain", "monorepo"];
+const fixtures = ["react-vite-tailwind", "react-plain", "monorepo", "astro-tailwind"];
 
 export default function setup() {
   for (const name of fixtures) {

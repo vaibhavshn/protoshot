@@ -161,3 +161,13 @@ test("--wait with a selector waits for it to appear", async () => {
   const [shot] = await shoot({ code }, { cwd: host, wait: "#late" });
   expect(readPng(shot!.path).pixel(10, 10)).toEqual([0, 255, 0, 255]);
 });
+
+test("Vite plugins from astro.config are applied, so Tailwind generates snippet classes", async () => {
+  const host = fixture("astro-tailwind");
+  const [file, inline] = await Promise.all([
+    shoot({ file: join(host, "Badge.tsx") }, { cwd: host, scale: 1 }),
+    shoot({ code: '<div className="bg-[#00ffff] p-8">Hi</div>' }, { cwd: host, scale: 1 }),
+  ]);
+  expect(readPng(file[0]!.path).pixel(20, 20)).toEqual([255, 0, 255, 255]);
+  expect(readPng(inline[0]!.path).pixel(20, 20)).toEqual([0, 255, 255, 255]);
+});
