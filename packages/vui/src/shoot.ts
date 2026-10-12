@@ -14,7 +14,7 @@ import type { ShootOptions, Shot, ShotError, SnippetInput } from "./types.ts";
 
 export async function shoot(input: SnippetInput, options: ShootOptions = {}): Promise<Shot[]> {
   const cwd = options.cwd ?? process.cwd();
-  const host = loadHost(cwd);
+  const host = loadHost(cwd, { css: options.css, components: options.components });
   const snippet =
     "file" in input ? resolve(cwd, input.file) : writeInlineSnippet(host.root, input.code);
   if ("file" in input && !existsSync(snippet)) {
@@ -24,7 +24,7 @@ export async function shoot(input: SnippetInput, options: ShootOptions = {}): Pr
   const exportNames = selectExports(snippet, options);
 
   // Scanned once and shared by every shot; the prelude never touches the snippet's own exports.
-  const components = scanComponents(host.root, host.config.components ?? []);
+  const components = scanComponents(host.root, host.config.components);
   const prelude = componentPrelude(components, readFileSync(snippet, "utf8"), snippet, host.root);
 
   const outDir = shotsDir(host.root, options.outDir);

@@ -38,23 +38,25 @@ A snippet is either a module that exports components, or a bare JSX expression (
 
 ### Options
 
-| Option           | Meaning                                                                            |
-| ---------------- | ---------------------------------------------------------------------------------- |
-| `--viewport WxH` | Viewport size. Default `1280x800`.                                                 |
-| `--scale N`      | Device scale factor. Default `2`.                                                  |
-| `--full`         | Capture the whole page, uncropped, instead of cropping to the content.             |
-| `--export NAME`  | Shoot one component export (`default` for the default export).                     |
-| `--all`          | Shoot every component export, one shot each.                                       |
-| `--dark`         | Render in dark mode (see `darkClass` below).                                       |
-| `--out DIR`      | Write shots to `DIR` instead of the OS temp dir. Also settable with `VUI_OUT_DIR`. |
-| `--wait MS\|SEL` | Extra wait before capture: milliseconds, or a CSS selector to wait for.            |
-| `--json`         | Print one JSON object per shot instead of bare paths.                              |
+| Option             | Meaning                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------ |
+| `--viewport WxH`   | Viewport size. Default `1280x800`.                                                         |
+| `--scale N`        | Device scale factor. Default `2`.                                                          |
+| `--full`           | Capture the whole page, uncropped, instead of cropping to the content.                     |
+| `--export NAME`    | Shoot one component export (`default` for the default export).                             |
+| `--all`            | Shoot every component export, one shot each.                                               |
+| `--dark`           | Render in dark mode (see `darkClass` below).                                               |
+| `--out DIR`        | Write shots to `DIR` instead of the OS temp dir. Also settable with `VUI_OUT_DIR`.         |
+| `--wait MS\|SEL`   | Extra wait before capture: milliseconds, or a CSS selector to wait for.                    |
+| `--json`           | Print one JSON object per shot instead of bare paths.                                      |
+| `--css FILE`       | Stylesheet to load; repeatable or comma-separated. Replaces `vui.json` and auto-detection. |
+| `--components DIR` | Component root; repeatable or comma-separated. Replaces `vui.json` and auto-detection.     |
 
 Without `--export` or `--all`, vui shoots the default export. A file with no default export reports an error for that shot, so use `--export NAME` or `--all` for files that only have named exports. `--all` shoots the default export (if any) plus every named export that looks like a component (PascalCase name, bound to a function, class, `memo(...)` or `forwardRef(...)`); it is a usage error (exit 2) when there are none, and `--export` with a name that is not one of those lists the available names. With `--all`, each shot succeeds or fails on its own: a failed shot is reported with its `error` and the exit code is 1, while the other shots are still written.
 
 ### Commands
 
-- `vui init` writes a `vui.json` (detecting your CSS entry), offers to add `.vui/` to `.gitignore`, and adds a "Previewing UI with vui" section to `AGENTS.md` or `CLAUDE.md` so agents discover the tool.
+- `vui init` is optional: vui auto-detects your CSS and component folders on every run (main files such as `index.css`, `global.css` and `styles.css` load first). It writes a `vui.json` (detecting your CSS entry), offers to add `.vui/` to `.gitignore`, and adds a "Previewing UI with vui" section to `AGENTS.md` or `CLAUDE.md` so agents discover the tool.
 - `vui install-browser` installs managed Chromium when no system Chrome is available.
 
 ### Output and exit codes
@@ -83,7 +85,7 @@ plus an `error` object (`message`, and `file`, `line`, `column`, `frame` when kn
 
 ## `vui.json`
 
-Optional. vui finds the host root by walking up to the nearest `vui.json`, otherwise the nearest `package.json`. Put `vui.json` at the repo root of a monorepo and run vui from any package. Unknown keys are an error. All paths are relative to the `vui.json` file.
+Optional. For each of `css` and `components`, a `--css`/`--components` flag wins, then `vui.json`, then auto-detection (a key left out of `vui.json` is auto-detected; `[]` means none). vui finds the host root by walking up to the nearest `vui.json`, otherwise the nearest `package.json`. Put `vui.json` at the repo root of a monorepo and run vui from any package. Unknown keys are an error. All paths are relative to the `vui.json` file.
 
 ```json
 {

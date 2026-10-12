@@ -44,3 +44,25 @@ test("the fallback walk does not descend past its depth bound", () => {
   const root = host({ "a/b/c/d/e/f/g/h/deep.css": '@import "tailwindcss";' });
   expect(detectCss(root)).toEqual([]);
 });
+
+test("main-named stylesheets load first, then the rest alphabetically", () => {
+  const root = host({
+    "src/main.tsx":
+      'import "./a.css"; import "./styles.css"; import "./index.css"; import "./b.css";',
+    "src/a.css": "body{}",
+    "src/b.css": "body{}",
+    "src/index.css": "body{}",
+    "src/styles.css": "body{}",
+  });
+  expect(detectCss(root)).toEqual(["src/index.css", "src/styles.css", "src/a.css", "src/b.css"]);
+});
+
+test("without entry imports, the best main-named stylesheet is used", () => {
+  const root = host({
+    "src/main.tsx": "export {};",
+    "src/other.css": "body{}",
+    "src/styles.css": "body{}",
+    "src/global.css": "body{}",
+  });
+  expect(detectCss(root)).toEqual(["src/global.css"]);
+});

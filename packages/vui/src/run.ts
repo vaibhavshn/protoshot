@@ -9,7 +9,8 @@ const USAGE = `Usage: vui <snippet-file> [options]
        vui -            read the snippet from stdin
        vui -e '<jsx>'   use the argument as the snippet
        vui install-browser   install managed Chromium (when no system Chrome)
-       vui init         write vui.json, update .gitignore and AGENTS.md/CLAUDE.md
+       vui init         optional: write vui.json, update .gitignore and AGENTS.md/CLAUDE.md
+                        (CSS and component folders are usually auto-detected on every run)
 
 Options:
   --viewport WxH   viewport size (default 1280x800)
@@ -21,6 +22,9 @@ Options:
   --wait MS|SEL    extra wait: milliseconds, or a selector to wait for
   --out DIR        write shots to DIR (default: $VUI_OUT_DIR, else the OS temp dir)
   --json           print one JSON object per shot on stdout
+  --css FILE       stylesheet to load (repeatable or comma-separated); replaces vui.json/auto-detection
+  --components DIR component folder whose exports need no import (repeatable or comma-separated);
+                   replaces vui.json/auto-detection
 `;
 
 /** argv → shoot() → stdout/stderr/exit code. Returns the exit code. */
@@ -40,6 +44,8 @@ export async function runCli(argv: string[]): Promise<number> {
         wait: { type: "string" },
         out: { type: "string" },
         json: { type: "boolean" },
+        css: { type: "string", multiple: true },
+        components: { type: "string", multiple: true },
       },
       allowPositionals: true,
     });
@@ -71,6 +77,8 @@ export async function runCli(argv: string[]): Promise<number> {
       all: values.all,
       wait: values.wait,
       outDir: values.out,
+      css: splitList(values.css),
+      components: splitList(values.components),
     });
     for (const shot of shots) process.stderr.write(describeProblems(shot));
     if (values.json) process.stdout.write(`${JSON.stringify(shots, null, 2)}\n`);
@@ -117,4 +125,9 @@ function parseScale(value: string | undefined) {
   const scale = Number(value);
   if (!(scale > 0)) throw new UsageError(`--scale expects a positive number (got "${value}")`);
   return scale;
+}
+
+function splitList(values: string[] | undefined) {
+  if (!values) return undefined;
+  return values.flatMap((value) => value.split(",")).filter(Boolean);
 }

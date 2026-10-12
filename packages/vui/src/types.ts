@@ -4,6 +4,10 @@ export type SnippetInput = { file: string } | { code: string };
 export interface ShootOptions {
   /** Directory the run starts from; the host root is found by walking up from here. */
   cwd?: string;
+  /** Stylesheets to load, relative to `cwd`; replaces `vui.json` and auto-detection. */
+  css?: string[];
+  /** Component roots, relative to `cwd`; replaces `vui.json` and auto-detection. */
+  components?: string[];
   /** Default 1280x800. */
   viewport?: { width: number; height: number };
   /** Device scale factor. Default 2. */
