@@ -1,4 +1,5 @@
-export type SnippetInput = { file: string };
+/** A snippet file path, or inline source (a bare expression or a module). */
+export type SnippetInput = { file: string } | { code: string };
 
 export interface ShootOptions {
   /** Directory the run starts from; the host root is found by walking up from here. */

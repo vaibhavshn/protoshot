@@ -14,6 +14,7 @@ import {
 import rendererSource from "./renderers/react.ts?raw";
 import { importFromHost, resolveReact } from "./resolve.ts";
 
+const TAILWIND_V4_IMPORT = /@import\s+["']tailwindcss["']/;
 const SHIM_URL = "/__vui__/react-dom-client-shim.js";
 const VITE_CONFIGS = ["ts", "mts", "js", "mjs", "cts", "cjs"].map((ext) => `vite.config.${ext}`);
 
@@ -58,6 +59,17 @@ function vuiPlugin(options: ServerOptions, reactMajor: number): Plugin {
     },
     load(id) {
       return virtual.get(id);
+    },
+    configResolved(config) {
+      // Host plugins come first; the CSS tooling has to see our @source before it generates.
+      const plugins = config.plugins as Plugin[];
+      const self = plugins.findIndex((plugin) => plugin.name === "vui");
+      plugins.unshift(...plugins.splice(self, 1));
+    },
+    transform(code, id) {
+      // Tailwind v4 skips gitignored directories, and .vui/ is one; point it at our snippets.
+      if (!id.split("?")[0]!.endsWith(".css") || !TAILWIND_V4_IMPORT.test(code)) return;
+      return `${code}\n@source ${JSON.stringify(join(host.root, ".vui", "snippets"))};\n`;
     },
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
