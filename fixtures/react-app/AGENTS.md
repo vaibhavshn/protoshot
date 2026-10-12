@@ -1,13 +1,13 @@
-## Previewing UI with vui
+## Previewing UI with protoshot
 
-Use `vui` to render a UI snippet in the real app styles and get a PNG back to look at. It prints the path of each shot.
+Use `protoshot` to render a UI snippet in the real app styles and get a PNG back to look at. It prints the path of each shot.
 
 ```sh
-vui src/components/Button.tsx        # render a snippet file
-vui - <<'EOF'                        # render a snippet from stdin
+protoshot src/components/Button.tsx        # render a snippet file
+protoshot - <<'EOF'                        # render a snippet from stdin
 <Button variant="primary">Save</Button>
 EOF
-vui -e '<Badge>New</Badge>'          # render an inline snippet
+protoshot -e '<Badge>New</Badge>'          # render an inline snippet
 ```
 
 - `--json` prints an array with one object per shot (path, export, error, console errors, warnings) instead of bare paths.
