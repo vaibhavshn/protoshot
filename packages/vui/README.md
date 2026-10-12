@@ -4,8 +4,12 @@ Turn UI source code into a screenshot. vui renders a snippet of React in your ow
 
 ## Install
 
+vui is not published to npm yet, so there is no registry install. Build and install it from a checkout:
+
 ```sh
-npm install -g vui
+vp install
+vp pack
+npm install -g .
 ```
 
 Requirements:
@@ -45,7 +49,7 @@ A snippet is either a module that exports components, or a bare JSX expression (
 | `--wait MS\|SEL` | Extra wait before capture: milliseconds, or a CSS selector to wait for. |
 | `--json`         | Print one JSON object per shot instead of bare paths.                   |
 
-A file with a default export shoots that export. A file with only named exports needs `--export NAME` or `--all`.
+Without `--export` or `--all`, vui shoots the default export. A file with no default export reports an error for that shot, so use `--export NAME` or `--all` for files that only have named exports. `--all` shoots the default export (if any) plus every named export that looks like a component (PascalCase name, bound to a function, class, `memo(...)` or `forwardRef(...)`); it is a usage error (exit 2) when there are none, and `--export` with a name that is not one of those lists the available names. With `--all`, each shot succeeds or fails on its own: a failed shot is reported with its `error` and the exit code is 1, while the other shots are still written.
 
 ### Commands
 
@@ -67,7 +71,7 @@ Each shot is a PNG. With `--json`, stdout is an array of:
 }
 ```
 
-plus an `error` object (`message`, and `file`, `line`, `column`, `frame` when known) if the snippet failed to build or render. A failed shot still produces a PNG showing the error. Human-readable details go to stderr.
+plus an `error` object (`message`, and `file`, `line`, `column`, `frame` when known) if the snippet failed to build or render. A snippet that fails to build or render still produces a PNG showing the error; a shot that could not be captured at all has an empty `path` and is skipped in the plain-path output. Human-readable details go to stderr.
 
 | Code | Meaning                                                    |
 | ---- | ---------------------------------------------------------- |
