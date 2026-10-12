@@ -14,7 +14,7 @@ test("a snippet file prints the path of its shot", async () => {
   expect(code).toBe(0);
   const path = stdout.trim();
   expect(existsSync(path)).toBe(true);
-  expect(readPng(path).width).toBe(1280);
+  expect(readPng(path).width).toBeLessThan(1280);
 });
 
 test("`vui -e` renders the argument", async () => {
@@ -34,4 +34,27 @@ test("`vui -` renders stdin", async () => {
   });
   expect(code).toBe(0);
   expect(readPng(stdout.trim()).pixel(10, 10)).toEqual([0, 255, 0, 255]);
+});
+
+test("--viewport, --scale and --full control the shot", async () => {
+  const host = fixture("react-vite-tailwind");
+  const { code, stdout } = await runCli(
+    ["Button.tsx", "--full", "--viewport", "600x400", "--scale", "1"],
+    { cwd: host },
+  );
+  expect(code).toBe(0);
+  const png = readPng(stdout.trim());
+  expect([png.width, png.height]).toEqual([600, 400]);
+});
+
+test("--dark renders in dark mode", async () => {
+  const host = fixture("react-vite-tailwind");
+  const { stdout } = await runCli(["Themed.tsx", "--dark"], { cwd: host });
+  expect(readPng(stdout.trim()).pixel(20, 20)).toEqual([0, 0, 0, 255]);
+});
+
+test("a malformed --viewport is a usage error", async () => {
+  const { code, stderr } = await runCli(["Button.tsx", "--viewport", "big"]);
+  expect(code).toBe(2);
+  expect(stderr).toContain("--viewport");
 });

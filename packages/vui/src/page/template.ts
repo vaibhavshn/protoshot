@@ -1,3 +1,5 @@
+import freezeCss from "./freeze.css?raw";
+
 export const RENDERER_URL = "/__vui__/renderer.ts";
 export const ENTRY_URL = "/__vui__/entry.tsx";
 export const PAGE_URL = "/__vui__/index.html";
@@ -5,7 +7,7 @@ export const PAGE_URL = "/__vui__/index.html";
 export function pageHtml(): string {
   return `<!doctype html>
 <html>
-<head><meta charset="utf-8"></head>
+<head><meta charset="utf-8"><style>${freezeCss}</style></head>
 <body>
 <div id="root"></div>
 <script type="module" src="${ENTRY_URL}"></script>

@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vite-plus/test";
@@ -7,7 +7,10 @@ import { fixture, readPng } from "./helpers.ts";
 
 test("a snippet file with a default export becomes a styled PNG", async () => {
   const host = fixture("react-vite-tailwind");
-  const [shot] = await shoot({ file: join(host, "Button.tsx") }, { cwd: host });
+  const [shot] = await shoot(
+    { file: join(host, "Button.tsx") },
+    { cwd: host, full: true, scale: 1 },
+  );
 
   expect(existsSync(shot!.path)).toBe(true);
   expect(shot!.path).toContain(join(host, ".vui/shots"));
@@ -93,4 +96,68 @@ test("an invalid vui.json is reported with its path", async () => {
   await expect(shoot({ code: "<div />" }, { cwd: host })).rejects.toThrow(
     new RegExp(`${join(host, "vui.json")}.*"css" must be an array`),
   );
+});
+
+test("by default the shot is cropped around the content at 2x", async () => {
+  const host = fixture("react-vite-tailwind");
+  const [shot] = await shoot({ file: "Button.tsx" }, { cwd: host });
+  const png = readPng(shot!.path);
+  expect(png.width).toBeLessThan(400);
+  expect(png.height).toBeLessThan(200);
+  // 2x device pixels: the 16px padding alone is 32 device pixels.
+  expect(png.width).toBeGreaterThan(32);
+  expect(png.pixel(10, 10)).toEqual([0, 255, 0, 255]);
+});
+
+test("--viewport and --scale set the size of a full shot", async () => {
+  const host = fixture("react-vite-tailwind");
+  const [shot] = await shoot(
+    { file: "Button.tsx" },
+    { cwd: host, full: true, viewport: { width: 600, height: 400 }, scale: 2 },
+  );
+  const png = readPng(shot!.path);
+  expect([png.width, png.height]).toEqual([1200, 800]);
+});
+
+test("a portal modal is fully inside the crop", async () => {
+  const host = fixture("react-vite-tailwind");
+  const [shot] = await shoot({ file: "Modal.tsx" }, { cwd: host, scale: 1 });
+  const png = readPng(shot!.path);
+  // Modal spans x 600..800 and y 300..400; the crop starts at the trigger in the corner.
+  expect(png.width).toBeGreaterThanOrEqual(800);
+  expect(png.height).toBeGreaterThanOrEqual(400);
+  expect(png.pixel(700, 350)).toEqual([0, 0, 255, 255]);
+});
+
+test("--dark flips a Tailwind dark: style", async () => {
+  const host = fixture("react-vite-tailwind");
+  const [light] = await shoot({ file: "Themed.tsx" }, { cwd: host });
+  const [dark] = await shoot({ file: "Themed.tsx" }, { cwd: host, dark: true });
+  expect(readPng(light!.path).pixel(20, 20)).toEqual([255, 255, 255, 255]);
+  expect(readPng(dark!.path).pixel(20, 20)).toEqual([0, 0, 0, 255]);
+});
+
+test("--dark passes colorScheme to the Wrapper", async () => {
+  const host = fixture("react-vite-tailwind");
+  const code =
+    'import { useContext } from "react";\nimport { ThemeContext } from "@/theme";\nexport default () => { const t = useContext(ThemeContext); return <div className={t === "night" ? "bg-[#111111] p-4" : "bg-[#eeeeee] p-4"}>x</div>; };';
+  const [light] = await shoot({ code }, { cwd: host });
+  const [dark] = await shoot({ code }, { cwd: host, dark: true });
+  expect(readPng(light!.path).pixel(10, 10)).toEqual([238, 238, 238, 255]);
+  expect(readPng(dark!.path).pixel(10, 10)).toEqual([17, 17, 17, 255]);
+});
+
+test("a spinning animation is captured identically every time", async () => {
+  const host = fixture("react-vite-tailwind");
+  const [a] = await shoot({ file: "Spinner.tsx" }, { cwd: host });
+  const [b] = await shoot({ file: "Spinner.tsx" }, { cwd: host });
+  expect(readFileSync(a!.path).equals(readFileSync(b!.path))).toBe(true);
+});
+
+test("--wait with a selector waits for it to appear", async () => {
+  const host = fixture("react-vite-tailwind");
+  const code =
+    'import { useEffect, useState } from "react";\nexport default () => { const [on, set] = useState(false); useEffect(() => { setTimeout(() => set(true), 400); }, []); return <div>{on && <i id="late" className="bg-[#00ff00] p-4">late</i>}</div>; };';
+  const [shot] = await shoot({ code }, { cwd: host, wait: "#late" });
+  expect(readPng(shot!.path).pixel(10, 10)).toEqual([0, 255, 0, 255]);
 });

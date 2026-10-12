@@ -25,13 +25,24 @@ export async function launchPlaywright(hostRoot: string): Promise<Driver> {
 
   return {
     async open({ viewport, scale, colorScheme }) {
-      const context = await browser.newContext({ viewport, deviceScaleFactor: scale, colorScheme });
+      const context = await browser.newContext({
+        viewport,
+        deviceScaleFactor: scale,
+        colorScheme,
+        reducedMotion: "reduce",
+      });
       const page = await context.newPage();
       return {
         goto: async (url) => void (await page.goto(url)),
         waitFor: async (expression, timeout) =>
           void (await page.waitForFunction(expression, undefined, { timeout })),
-        screenshot: () => page.screenshot({ type: "png" }),
+        evaluate: (fn) => page.evaluate(fn),
+        waitForNetworkIdle: async (capMs) => {
+          await page.waitForLoadState("networkidle", { timeout: capMs }).catch(() => {});
+        },
+        waitForSelector: async (selector, timeout) =>
+          void (await page.waitForSelector(selector, { timeout })),
+        screenshot: (options) => page.screenshot({ type: "png", ...options }),
         close: () => context.close(),
       };
     },

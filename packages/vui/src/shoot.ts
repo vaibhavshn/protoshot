@@ -19,13 +19,15 @@ export async function shoot(input: SnippetInput, options: ShootOptions = {}): Pr
   try {
     const driver = await launchPlaywright(host.root);
     try {
-      const page = await driver.open({
-        viewport: { width: 1280, height: 800 },
-        scale: 1,
-        colorScheme: "light",
+      const viewport = options.viewport ?? { width: 1280, height: 800 };
+      const colorScheme = options.dark ? "dark" : "light";
+      const page = await driver.open({ viewport, scale: options.scale ?? 2, colorScheme });
+      await page.goto(server.pageUrl("default", colorScheme));
+      const png = await capture(page, {
+        viewport,
+        full: options.full ?? false,
+        wait: options.wait,
       });
-      await page.goto(server.pageUrl("default", "light"));
-      const png = await capture(page);
       await page.close();
       return [{ ...writeShot(host.root, png), export: "default" }];
     } finally {

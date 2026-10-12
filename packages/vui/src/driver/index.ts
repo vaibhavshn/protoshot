@@ -1,3 +1,10 @@
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface Viewport {
   width: number;
   height: number;
@@ -13,7 +20,12 @@ export interface PageHandle {
   goto(url: string): Promise<void>;
   /** Resolves once `expression` evaluates truthy in the page. */
   waitFor(expression: string, timeoutMs: number): Promise<void>;
-  screenshot(): Promise<Uint8Array>;
+  /** Evaluates `fn` in the page. */
+  evaluate<T>(fn: () => T | Promise<T>): Promise<T>;
+  /** Waits for the network to be quiet for 500ms, giving up silently after `capMs`. */
+  waitForNetworkIdle(capMs: number): Promise<void>;
+  waitForSelector(selector: string, timeoutMs: number): Promise<void>;
+  screenshot(options?: { clip?: Rect; fullPage?: boolean }): Promise<Uint8Array>;
   close(): Promise<void>;
 }
 
