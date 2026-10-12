@@ -13,3 +13,4 @@ dist
 
 # vui output
 .vui/
+.scratch/
