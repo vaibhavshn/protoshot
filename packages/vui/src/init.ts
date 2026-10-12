@@ -19,7 +19,7 @@ const AGENT_SECTION_TITLE = "Previewing UI with vui";
 
 const AGENT_SECTION = `## ${AGENT_SECTION_TITLE}
 
-Use \`vui\` to render a UI snippet in the real app styles and get a PNG back to look at. It prints the path of each shot.
+Use \`vui\` to render a UI snippet in the real app styles and get a PNG back to look at. It prints the path of each shot; shots are throwaway files in the OS temp dir (override with \`--out DIR\`), so read the printed path rather than looking in the repo.
 
 \`\`\`sh
 vui src/components/Button.tsx        # render a snippet file

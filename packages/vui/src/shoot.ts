@@ -7,7 +7,7 @@ import { capture } from "./capture.ts";
 import { componentPrelude, hintUnresolved, scanComponents } from "./components.ts";
 import { launchPlaywright } from "./driver/playwright.ts";
 import { loadHost } from "./host.ts";
-import { writeShot } from "./output.ts";
+import { pruneShots, shotsDir, writeShot } from "./output.ts";
 import { listComponentExports, toModuleSource } from "./snippet.ts";
 import { startServer } from "./server.ts";
 import type { ShootOptions, Shot, ShotError, SnippetInput } from "./types.ts";
@@ -26,6 +26,9 @@ export async function shoot(input: SnippetInput, options: ShootOptions = {}): Pr
   // Scanned once and shared by every shot; the prelude never touches the snippet's own exports.
   const components = scanComponents(host.root, host.config.components ?? []);
   const prelude = componentPrelude(components, readFileSync(snippet, "utf8"), snippet, host.root);
+
+  const outDir = shotsDir(host.root, options.outDir);
+  if (!options.outDir && !process.env.VUI_OUT_DIR) pruneShots(outDir);
 
   const server = await startServer({ host, snippet, prelude });
   try {
@@ -50,7 +53,7 @@ export async function shoot(input: SnippetInput, options: ShootOptions = {}): Pr
               () => (window as unknown as { __vuiError?: ShotError }).__vuiError,
             );
             return {
-              ...writeShot(host.root, png),
+              ...writeShot(outDir, png),
               export: exportName,
               consoleErrors,
               warnings,

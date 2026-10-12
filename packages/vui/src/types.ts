@@ -16,6 +16,8 @@ export interface ShootOptions {
   all?: boolean;
   /** Render in dark mode. */
   dark?: boolean;
+  /** Directory for the PNGs. Default: `$VUI_OUT_DIR`, else a per-host directory in the OS temp dir. */
+  outDir?: string;
   /** Extra wait before capture: milliseconds, or a CSS selector. */
   wait?: string;
 }

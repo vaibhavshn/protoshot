@@ -19,6 +19,7 @@ Options:
   --all            shoot every component export
   --dark           render in dark mode
   --wait MS|SEL    extra wait: milliseconds, or a selector to wait for
+  --out DIR        write shots to DIR (default: $VUI_OUT_DIR, else the OS temp dir)
   --json           print one JSON object per shot on stdout
 `;
 
@@ -37,6 +38,7 @@ export async function runCli(argv: string[]): Promise<number> {
         export: { type: "string" },
         all: { type: "boolean" },
         wait: { type: "string" },
+        out: { type: "string" },
         json: { type: "boolean" },
       },
       allowPositionals: true,
@@ -68,6 +70,7 @@ export async function runCli(argv: string[]): Promise<number> {
       export: values.export,
       all: values.all,
       wait: values.wait,
+      outDir: values.out,
     });
     for (const shot of shots) process.stderr.write(describeProblems(shot));
     if (values.json) process.stdout.write(`${JSON.stringify(shots, null, 2)}\n`);

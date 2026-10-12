@@ -13,7 +13,8 @@ test("a snippet file with a default export becomes a styled PNG", async () => {
   );
 
   expect(existsSync(shot!.path)).toBe(true);
-  expect(shot!.path).toContain(join(host, ".vui/shots"));
+  expect(shot!.path).toContain(join(tmpdir(), "vui"));
+  expect(shot!.path).not.toContain(host);
   const png = readPng(shot!.path);
   expect([png.width, png.height]).toEqual([1280, 800]);
   // Tailwind arbitrary class `bg-[#00ff00]` only exists if the host CSS pipeline ran.
@@ -64,7 +65,7 @@ test("a non-Vite host renders through tsconfig paths with the Wrapper active", a
 test("running from a monorepo package finds the root vui.json", async () => {
   const root = fixture("monorepo");
   const [shot] = await shoot({ file: "src/Hello.tsx" }, { cwd: join(root, "packages/app") });
-  expect(shot!.path).toContain(join(root, ".vui/shots"));
+  expect(shot!.path).toContain(join(tmpdir(), "vui"));
   expect(readPng(shot!.path).pixel(20, 20)).toEqual(BLUE);
 });
 
