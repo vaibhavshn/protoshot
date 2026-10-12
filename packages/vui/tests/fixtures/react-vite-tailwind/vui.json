@@ -1,0 +1,5 @@
+{
+  "css": ["src/index.css"],
+  "wrapper": "src/Wrapper.tsx",
+  "darkClass": "dark"
+}

@@ -1,0 +1,4 @@
+{
+  "css": ["packages/app/src/app.css"],
+  "wrapper": "packages/app/src/Wrapper.tsx"
+}

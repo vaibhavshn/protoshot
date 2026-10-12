@@ -1,0 +1,4 @@
+{
+  "css": ["src/styles.css"],
+  "wrapper": "src/Wrapper.tsx"
+}
