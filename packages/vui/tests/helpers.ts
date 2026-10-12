@@ -16,13 +16,13 @@ export interface CliResult {
 /** Runs the built vui binary. */
 export function runCli(
   args: string[],
-  opts: { cwd?: string; stdin?: string } = {},
+  opts: { cwd?: string; stdin?: string; env?: Record<string, string> } = {},
 ): Promise<CliResult> {
   return new Promise((resolve) => {
     const child = execFile(
       process.execPath,
       [cliPath, ...args],
-      { cwd: opts.cwd, timeout: 90_000 },
+      { cwd: opts.cwd, timeout: 300_000, env: { ...process.env, ...opts.env } },
       (error, stdout, stderr) => {
         const code = error ? (typeof error.code === "number" ? error.code : 1) : 0;
         resolve({ code, stdout, stderr });

@@ -1,9 +1,22 @@
-import type { Browser } from "playwright-core";
+import type { Browser, BrowserType } from "playwright-core";
 import { BrowserNotFound } from "../errors.ts";
 import { importFromHost } from "../resolve.ts";
 import type { Driver } from "./index.ts";
 
 type Playwright = typeof import("playwright-core");
+
+/** System Chrome first, then managed Chromium (`vui install-browser`); otherwise BrowserNotFound. */
+export async function launchChromium(chromium: BrowserType): Promise<Browser> {
+  try {
+    return await chromium.launch({ channel: "chrome", headless: true });
+  } catch {
+    try {
+      return await chromium.launch({ headless: true });
+    } catch {
+      throw new BrowserNotFound();
+    }
+  }
+}
 
 export async function launchPlaywright(hostRoot: string): Promise<Driver> {
   const mod = await importFromHost<Playwright & { default?: Playwright }>(
@@ -12,16 +25,7 @@ export async function launchPlaywright(hostRoot: string): Promise<Driver> {
   );
   const { chromium } = mod.chromium ? mod : mod.default!;
 
-  let browser: Browser;
-  try {
-    browser = await chromium.launch({ channel: "chrome", headless: true });
-  } catch {
-    try {
-      browser = await chromium.launch({ headless: true });
-    } catch {
-      throw new BrowserNotFound();
-    }
-  }
+  const browser = await launchChromium(chromium);
 
   return {
     async open({ viewport, scale, colorScheme }) {

@@ -1,3 +1,6 @@
+import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import { UsageError, VuiError } from "./errors.ts";
 import { shoot } from "./shoot.ts";
@@ -6,6 +9,7 @@ import type { Shot, SnippetInput } from "./types.ts";
 const USAGE = `Usage: vui <snippet-file> [options]
        vui -            read the snippet from stdin
        vui -e '<jsx>'   use the argument as the snippet
+       vui install-browser   install managed Chromium (when no system Chrome)
 
 Options:
   --viewport WxH   viewport size (default 1280x800)
@@ -38,6 +42,7 @@ export async function runCli(argv: string[]): Promise<number> {
       return 0;
     }
     const [target] = positionals;
+    if (target === "install-browser") return await installBrowser();
     let input: SnippetInput;
     if (values.eval !== undefined) input = { code: values.eval };
     else if (target === "-") input = { code: await readStdin() };
@@ -61,6 +66,17 @@ export async function runCli(argv: string[]): Promise<number> {
     process.stderr.write(`${(error as Error).message}\n`);
     return error instanceof VuiError ? error.exitCode : 2;
   }
+}
+
+/** Installs managed Chromium using vui's own playwright-core. */
+async function installBrowser(): Promise<number> {
+  const pkg = createRequire(import.meta.url).resolve("playwright-core/package.json");
+  const cli = join(dirname(pkg), "cli.js");
+  const child = spawn(process.execPath, [cli, "install", "chromium"], { stdio: "inherit" });
+  return await new Promise((resolve) => {
+    child.on("error", () => resolve(3));
+    child.on("close", (code) => resolve(code === 0 ? 0 : 3));
+  });
 }
 
 /** Human-readable details for one shot, for stderr. Empty when the shot is clean. */
