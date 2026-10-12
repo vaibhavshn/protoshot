@@ -18,7 +18,6 @@ const rawImports = {
 };
 
 export default defineConfig({
-  // Vitest otherwise turns `freeze.css?raw` into an empty string, so in-process shots never froze.
   plugins: [rawImports],
   staged: {
     "*": "vp check --fix",
@@ -38,6 +37,8 @@ export default defineConfig({
     exports: true,
   },
   test: {
+    // Vitest blanks every CSS module by default, including `freeze.css?raw`.
+    css: { include: [/freeze\.css/] },
     globalSetup: ["tests/global-setup.ts"],
     testTimeout: 60_000,
     hookTimeout: 120_000,
