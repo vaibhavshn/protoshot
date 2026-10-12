@@ -11,6 +11,8 @@ Options:
   --viewport WxH   viewport size (default 1280x800)
   --scale N        device scale factor (default 2)
   --full           capture the whole viewport instead of cropping to the content
+  --export NAME    shoot one component export ("default" for the default export)
+  --all            shoot every component export
   --dark           render in dark mode
   --wait MS|SEL    extra wait: milliseconds, or a selector to wait for
   --json           print one JSON object per shot on stdout
@@ -28,6 +30,8 @@ export async function runCli(argv: string[]): Promise<number> {
         scale: { type: "string" },
         full: { type: "boolean" },
         dark: { type: "boolean" },
+        export: { type: "string" },
+        all: { type: "boolean" },
         wait: { type: "string" },
         json: { type: "boolean" },
       },
@@ -51,6 +55,8 @@ export async function runCli(argv: string[]): Promise<number> {
       scale: parseScale(values.scale),
       full: values.full,
       dark: values.dark,
+      export: values.export,
+      all: values.all,
       wait: values.wait,
     });
     for (const shot of shots) process.stderr.write(describeProblems(shot));

@@ -10,6 +10,10 @@ export interface ShootOptions {
   scale?: number;
   /** Capture the whole viewport instead of cropping to the content. */
   full?: boolean;
+  /** Shoot this one component export (`default` for the default export). */
+  export?: string;
+  /** Shoot every component export. */
+  all?: boolean;
   /** Render in dark mode. */
   dark?: boolean;
   /** Extra wait before capture: milliseconds, or a CSS selector. */
