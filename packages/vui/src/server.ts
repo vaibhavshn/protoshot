@@ -12,6 +12,7 @@ import {
   pageHtml,
 } from "./page/template.ts";
 import rendererSource from "./renderers/react.ts?raw";
+import { buildAliases } from "./aliases.ts";
 import { importFromHost, resolveReact } from "./resolve.ts";
 
 const TAILWIND_V4_IMPORT = /@import\s+["']tailwindcss["']/;
@@ -86,15 +87,24 @@ export async function startServer(options: ServerOptions): Promise<Server> {
   const { host } = options;
   const react = resolveReact(host.root);
   const vite = await importFromHost<typeof import("vite")>("vite", host.root);
-  const configFile = findViteConfig(host.root) ?? false;
+  const hostConfigFile = findViteConfig(host.root);
+  // Without a Vite config of its own, the host needs React's JSX transform and its tsconfig aliases.
+  const hostPlugins = hostConfigFile
+    ? []
+    : [
+        (
+          await importFromHost<{ default: () => Plugin }>("@vitejs/plugin-react", host.root)
+        ).default(),
+      ];
 
   const server: ViteDevServer = await vite.createServer({
     root: host.root,
-    configFile,
+    configFile: hostConfigFile ?? false,
     appType: "custom",
     clearScreen: false,
     logLevel: "silent",
-    plugins: [vuiPlugin(options, react.major)],
+    plugins: [...hostPlugins, vuiPlugin(options, react.major)],
+    resolve: { alias: buildAliases(host, !hostConfigFile) },
     server: {
       host: "127.0.0.1",
       port: 0,
