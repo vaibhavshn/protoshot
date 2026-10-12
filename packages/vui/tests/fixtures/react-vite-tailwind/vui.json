@@ -1,5 +1,6 @@
 {
   "css": ["src/index.css"],
+  "components": ["src/components"],
   "wrapper": "src/Wrapper.tsx",
   "darkClass": "dark"
 }

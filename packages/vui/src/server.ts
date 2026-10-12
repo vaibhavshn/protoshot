@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
@@ -38,6 +38,8 @@ export interface ServerOptions {
   host: Host;
   /** Absolute path of the snippet module to render. */
   snippet: string;
+  /** Import statements for Component root exports the snippet uses; prepended to its source. */
+  prelude?: string;
 }
 
 function findViteConfig(root: string): string | undefined {
@@ -47,6 +49,8 @@ function findViteConfig(root: string): string | undefined {
 function vuiPlugin(options: ServerOptions, reactMajor: number): Plugin {
   const { host, snippet } = options;
   const resolveConfigPath = (file: string) => join(host.root, file);
+  // Vite reports the real path, which differs from `snippet` when the host sits behind a symlink.
+  const snippetIds = new Set([snippet, realpathSync(snippet)]);
   const virtual = new Map<string, string>([
     [RENDERER_URL, rendererSource],
     [
@@ -77,6 +81,8 @@ function vuiPlugin(options: ServerOptions, reactMajor: number): Plugin {
       plugins.unshift(...plugins.splice(self, 1));
     },
     transform(code, id) {
+      if (options.prelude && snippetIds.has(id.split("?")[0]!))
+        return { code: options.prelude + code, map: null };
       // Tailwind v4 skips gitignored directories (.vui/ is one) and files outside its base; name ours.
       if (!id.split("?")[0]!.endsWith(".css") || !TAILWIND_V4_IMPORT.test(code)) return;
       const sources = [join(host.root, ".vui", "snippets"), snippet];

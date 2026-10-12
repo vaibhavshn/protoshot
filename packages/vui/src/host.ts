@@ -4,6 +4,8 @@ import { ConfigError } from "./errors.ts";
 
 export interface HostConfig {
   css: string[];
+  /** Component roots: directories whose components are in scope in every snippet. */
+  components?: string[];
   wrapper?: string;
   darkClass?: string;
   alias?: Record<string, string>;
@@ -40,7 +42,7 @@ export function parseHostConfig(file: string, text: string): HostConfig {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw))
     fail(file, "expected an object");
   const obj = raw as Record<string, unknown>;
-  const known = ["css", "wrapper", "darkClass", "alias"];
+  const known = ["css", "components", "wrapper", "darkClass", "alias"];
   for (const key of Object.keys(obj)) {
     if (!known.includes(key))
       fail(file, `unknown key "${key}" (expected one of ${known.join(", ")})`);
@@ -48,6 +50,9 @@ export function parseHostConfig(file: string, text: string): HostConfig {
   const css = obj.css ?? [];
   if (!Array.isArray(css) || css.some((c) => typeof c !== "string"))
     fail(file, '"css" must be an array of strings');
+  const components = obj.components ?? [];
+  if (!Array.isArray(components) || components.some((c) => typeof c !== "string"))
+    fail(file, '"components" must be an array of strings');
   for (const key of ["wrapper", "darkClass"] as const) {
     if (obj[key] !== undefined && typeof obj[key] !== "string")
       fail(file, `"${key}" must be a string`);
@@ -63,6 +68,7 @@ export function parseHostConfig(file: string, text: string): HostConfig {
   }
   return {
     css: css as string[],
+    components: components as string[],
     wrapper: obj.wrapper as string | undefined,
     darkClass: obj.darkClass as string | undefined,
     alias: alias as Record<string, string> | undefined,

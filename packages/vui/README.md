@@ -34,7 +34,7 @@ EOF
 
 vui prints one PNG path per shot (shots are written to `<host root>/.vui/shots/`). It never guesses whether an argument is a path or code: use `-e` or `-` for code.
 
-A snippet is either a module that exports components, or a bare JSX expression (no `export`, one expression statement). Inline snippets resolve imports such as `./src/...` and `@/...` against the host root.
+A snippet is either a module that exports components, or a bare JSX expression (no `export`, one expression statement). With `components` set in `vui.json`, snippets need no imports for those components: `vui -e '<Button>Hi</Button>'`. Inline snippets resolve imports such as `./src/...` and `@/...` against the host root.
 
 ### Options
 
@@ -87,18 +87,20 @@ Optional. vui finds the host root by walking up to the nearest `vui.json`, other
 ```json
 {
   "css": ["src/index.css"],
+  "components": ["src/components"],
   "wrapper": "src/Wrapper.tsx",
   "darkClass": "dark",
   "alias": { "@ui": "packages/ui/src" }
 }
 ```
 
-| Key         | Type                     | Meaning                                                                                                                                                               |
-| ----------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `css`       | `string[]`               | Global stylesheets to load before the snippet (your app's entry CSS, Tailwind included). `vui init` fills this in.                                                    |
-| `wrapper`   | `string`                 | A component that wraps every snippet, for providers (theme, router, and so on). Its default export receives `{ children, colorScheme }`.                              |
-| `darkClass` | `string`                 | Class added to `<html>` with `--dark`, for class-based dark mode. `--dark` also emulates `prefers-color-scheme: dark` and passes `colorScheme="dark"` to the wrapper. |
-| `alias`     | `Record<string, string>` | Extra import aliases, merged over `tsconfig.json` `compilerOptions.paths`. Targets are relative to the host root. `vui.json` wins on conflicts.                       |
+| Key          | Type                     | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `css`        | `string[]`               | Global stylesheets to load before the snippet (your app's entry CSS, Tailwind included). `vui init` fills this in.                                                                                                                                                                                                                                                                                                                         |
+| `components` | `string[]`               | Component roots: directories scanned recursively (ignoring `*.test.*`, `*.stories.*`, `*.d.ts`). PascalCase exports are in scope in every snippet without an import; a default export is named after its file (`button-group.tsx` → `ButtonGroup`, `Button/index.tsx` → `Button`). A name exported by two files is a usage error when a snippet uses it. `vui init` detects `src/components`, `components`, `app/components` and `src/ui`. |
+| `wrapper`    | `string`                 | A component that wraps every snippet, for providers (theme, router, and so on). Its default export receives `{ children, colorScheme }`.                                                                                                                                                                                                                                                                                                   |
+| `darkClass`  | `string`                 | Class added to `<html>` with `--dark`, for class-based dark mode. `--dark` also emulates `prefers-color-scheme: dark` and passes `colorScheme="dark"` to the wrapper.                                                                                                                                                                                                                                                                      |
+| `alias`      | `Record<string, string>` | Extra import aliases, merged over `tsconfig.json` `compilerOptions.paths`. Targets are relative to the host root. `vui.json` wins on conflicts.                                                                                                                                                                                                                                                                                            |
 
 If the host has a `vite.config.*`, vui uses it (plugins, aliases, PostCSS). For an Astro host (an `astro.config.*` and no `vite.config.*`), vui evaluates the config and applies its `vite.plugins` (Tailwind, for example) and `vite.resolve.alias`, skipping Cloudflare plugins; Astro integrations and `astro:*` imports are not run. Otherwise it uses `@vitejs/plugin-react`, tsconfig paths and the aliases above.
 

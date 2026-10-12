@@ -5,10 +5,13 @@ packages:
 catalogMode: prefer
 
 catalog:
+  "@tailwindcss/vite": ^4.3.3
   "@types/node": ^24
+  tailwindcss: ^4.3.3
   typescript: ^7.0.2
   vite: npm:@voidzero-dev/vite-plus-core@1.1.0
   vite-plus: 1.1.0
+  vui: workspace:*
 overrides:
   vite@*: "catalog:"
 peerDependencyRules:

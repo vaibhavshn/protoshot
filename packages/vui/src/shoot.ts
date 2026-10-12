@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { attributeError } from "./attribute.ts";
 import { UsageError } from "./errors.ts";
 import { capture } from "./capture.ts";
+import { componentPrelude, hintUnresolved, scanComponents } from "./components.ts";
 import { launchPlaywright } from "./driver/playwright.ts";
 import { loadHost } from "./host.ts";
 import { writeShot } from "./output.ts";
@@ -22,7 +23,11 @@ export async function shoot(input: SnippetInput, options: ShootOptions = {}): Pr
 
   const exportNames = selectExports(snippet, options);
 
-  const server = await startServer({ host, snippet });
+  // Scanned once and shared by every shot; the prelude never touches the snippet's own exports.
+  const components = scanComponents(host.root, host.config.components ?? []);
+  const prelude = componentPrelude(components, readFileSync(snippet, "utf8"), snippet, host.root);
+
+  const server = await startServer({ host, snippet, prelude });
   try {
     const driver = await launchPlaywright(host.root);
     try {
@@ -50,7 +55,10 @@ export async function shoot(input: SnippetInput, options: ShootOptions = {}): Pr
               consoleErrors,
               warnings,
               // Vite knows the file and line; the browser only sees "failed to fetch module".
-              error: attributeError(pageError, server.errors(), host.root),
+              error: hintUnresolved(
+                attributeError(pageError, server.errors(), host.root),
+                components,
+              ),
             };
           } finally {
             await page.close().catch(() => {});

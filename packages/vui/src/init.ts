@@ -13,6 +13,8 @@ const IMPORT_RE = /(?:import\s+|import\s*\(\s*)["']([^"']+)["']/g;
 const TAILWIND_RE = /@tailwind\b|@import\s+["']tailwindcss/;
 const SKIP_DIRS = new Set(["node_modules", ".git", ".vui", "dist", "build", ".next"]);
 
+const COMPONENT_DIRS = ["src/components", "components", "app/components", "src/ui"];
+
 const AGENT_SECTION_TITLE = "Previewing UI with vui";
 
 const AGENT_SECTION = `## ${AGENT_SECTION_TITLE}
@@ -30,6 +32,7 @@ vui -e '<Badge>New</Badge>'          # render an inline snippet
 - \`--json\` prints an array with one object per shot (path, export, error, console errors, warnings) instead of bare paths.
 - \`--all\` renders every variant a snippet file exports, one shot each.
 - \`--dark\` renders in dark mode.
+- Components exported from the directories listed under \`components\` in \`vui.json\` need no import in a snippet.
 - A non-zero exit code means the build, render or console reported an error; read stderr.
 `;
 
@@ -106,6 +109,10 @@ export function detectCss(root: string): string[] {
   return [...found].map((file) => relative(root, file).split(sep).join("/")).sort();
 }
 
+function isDirectory(path: string): boolean {
+  return existsSync(path) && statSync(path).isDirectory();
+}
+
 function appendBlock(file: string, block: string, blankLine = true) {
   const prior = existsSync(file) ? readFileSync(file, "utf8") : "";
   const gap =
@@ -140,10 +147,13 @@ export async function runInit(cwd: string, interactive: boolean): Promise<string
   if (existsSync(configFile)) report.push("vui.json already exists, left unchanged");
   else {
     const css = detectCss(root);
-    writeFileSync(configFile, `${JSON.stringify({ css }, null, 2)}\n`);
+    const components = COMPONENT_DIRS.filter((dir) => isDirectory(join(root, dir)));
+    const config = components.length ? { css, components } : { css };
+    writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`);
     report.push(
       css.length ? `wrote vui.json (css: ${css.join(", ")})` : "wrote vui.json (no CSS found)",
     );
+    if (components.length) report.push(`component roots: ${components.join(", ")}`);
   }
 
   const ignoreFile = join(root, ".gitignore");
