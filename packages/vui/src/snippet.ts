@@ -54,6 +54,16 @@ function isComponentValue(node: Node | null | undefined): boolean {
   }
 }
 
+/** The `[name, isComponent]` pairs a top-level declaration introduces. */
+function declared(decl: Node): [string, boolean][] {
+  if (decl.type === "VariableDeclaration") {
+    return (decl.declarations as Node[])
+      .filter((d) => d.id.type === "Identifier")
+      .map((d) => [d.id.name, isComponentValue(d.init)]);
+  }
+  return decl.id?.type === "Identifier" ? [[decl.id.name, isComponentValue(decl)]] : [];
+}
+
 /**
  * Names of the exports that render as components, in source order. `default` stands for the
  * default export; named exports must also have a PascalCase name.
@@ -61,43 +71,27 @@ function isComponentValue(node: Node | null | undefined): boolean {
 export function listComponentExports(source: string): string[] {
   const { program } = parseSync("snippet.tsx", toModuleSource(source), { lang: "tsx" });
   const body = program.body as unknown as Node[];
+  const names = new Set<string>();
   const locals = new Map<string, boolean>();
+  const exported: Node[] = [];
   for (const node of body) {
     const decl = node.type === "ExportNamedDeclaration" ? node.declaration : node;
-    if (!decl) continue;
-    if (decl.type === "VariableDeclaration") {
-      for (const d of decl.declarations as Node[]) {
-        if (d.id.type === "Identifier") locals.set(d.id.name, isComponentValue(d.init));
-      }
-    } else if (decl.id?.type === "Identifier") {
-      locals.set(decl.id.name, isComponentValue(decl));
-    }
+    if (decl) for (const [name, isComponent] of declared(decl)) locals.set(name, isComponent);
+    if (node.type === "ExportNamedDeclaration" || node.type === "ExportDefaultDeclaration")
+      exported.push(node);
   }
-
-  const names: string[] = [];
-  const add = (name: string) => {
-    if (!names.includes(name)) names.push(name);
-  };
-  for (const node of body) {
-    if (node.type === "ExportDefaultDeclaration") {
-      add("default");
-    } else if (node.type === "ExportNamedDeclaration") {
-      const decl = node.declaration as Node | null;
-      if (decl?.type === "VariableDeclaration") {
-        for (const d of decl.declarations as Node[]) {
-          if (d.id.type === "Identifier" && PASCAL_CASE.test(d.id.name) && isComponentValue(d.init))
-            add(d.id.name);
-        }
-      } else if (decl) {
-        const name = decl.id?.name as string | undefined;
-        if (name && PASCAL_CASE.test(name) && isComponentValue(decl)) add(name);
-      } else if (!node.source) {
-        for (const spec of node.specifiers as Node[]) {
-          const exported = (spec.exported.name ?? spec.exported.value) as string;
-          if (PASCAL_CASE.test(exported) && locals.get(spec.local.name)) add(exported);
-        }
+  for (const node of exported) {
+    if (node.type === "ExportDefaultDeclaration") names.add("default");
+    else if (node.declaration) {
+      for (const [name, isComponent] of declared(node.declaration as Node)) {
+        if (isComponent && PASCAL_CASE.test(name)) names.add(name);
+      }
+    } else if (!node.source) {
+      for (const spec of node.specifiers as Node[]) {
+        const name = (spec.exported.name ?? spec.exported.value) as string;
+        if (PASCAL_CASE.test(name) && locals.get(spec.local.name)) names.add(name);
       }
     }
   }
-  return names;
+  return [...names];
 }

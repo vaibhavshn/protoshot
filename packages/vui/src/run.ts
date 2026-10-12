@@ -71,7 +71,7 @@ export async function runCli(argv: string[]): Promise<number> {
     });
     for (const shot of shots) process.stderr.write(describeProblems(shot));
     if (values.json) process.stdout.write(`${JSON.stringify(shots, null, 2)}\n`);
-    else for (const shot of shots) process.stdout.write(`${shot.path}\n`);
+    else for (const shot of shots) if (shot.path) process.stdout.write(`${shot.path}\n`);
     return shots.some((shot) => shot.error || shot.consoleErrors.length > 0) ? 1 : 0;
   } catch (error) {
     process.stderr.write(`${(error as Error).message}\n`);

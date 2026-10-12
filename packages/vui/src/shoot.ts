@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { attributeError } from "./attribute.ts";
 import { UsageError } from "./errors.ts";
 import { capture } from "./capture.ts";
 import { launchPlaywright } from "./driver/playwright.ts";
@@ -19,7 +20,7 @@ export async function shoot(input: SnippetInput, options: ShootOptions = {}): Pr
     throw new UsageError(`Snippet file not found: ${input.file}`);
   }
 
-  const exports = selectExports(snippet, options);
+  const exportNames = selectExports(snippet, options);
 
   const server = await startServer({ host, snippet });
   try {
@@ -27,33 +28,51 @@ export async function shoot(input: SnippetInput, options: ShootOptions = {}): Pr
     try {
       const viewport = options.viewport ?? { width: 1280, height: 800 };
       const colorScheme = options.dark ? "dark" : "light";
-      // One page per shot, all against the same server and browser.
-      return await Promise.all(
-        exports.map(async (exportName): Promise<Shot> => {
+      // One page per shot, all against the same server and browser; each shot fails alone.
+      const settled = await Promise.allSettled(
+        exportNames.map(async (exportName): Promise<Shot> => {
           const page = await driver.open({ viewport, scale: options.scale ?? 2, colorScheme });
-          await page.goto(server.pageUrl(exportName, colorScheme));
-          server.warmed();
-          const png = await capture(page, {
-            viewport,
-            full: options.full ?? false,
-            wait: options.wait,
-          });
-          const { consoleErrors, warnings } = page.diagnostics();
-          const pageError = await page.evaluate(
-            () => (window as unknown as { __vuiError?: ShotError }).__vuiError,
-          );
-          await page.close();
-          // Vite knows the file and line; the browser only sees "failed to fetch module".
-          const error = server.errors()[0] ?? pageError;
-          return {
-            ...writeShot(host.root, png),
-            export: exportName,
-            consoleErrors,
-            warnings,
-            error,
-          };
+          try {
+            await page.goto(server.pageUrl(exportName, colorScheme));
+            server.releaseColdStartLock();
+            const png = await capture(page, {
+              viewport,
+              full: options.full ?? false,
+              wait: options.wait,
+            });
+            const { consoleErrors, warnings } = page.diagnostics();
+            const pageError = await page.evaluate(
+              () => (window as unknown as { __vuiError?: ShotError }).__vuiError,
+            );
+            return {
+              ...writeShot(host.root, png),
+              export: exportName,
+              consoleErrors,
+              warnings,
+              // Vite knows the file and line; the browser only sees "failed to fetch module".
+              error: attributeError(pageError, server.errors(), host.root),
+            };
+          } finally {
+            await page.close().catch(() => {});
+          }
         }),
       );
+      // A run where nothing was shot is a failed run; otherwise keep the shots that worked.
+      const failure = settled.find((result) => result.status === "rejected");
+      if (failure && settled.every((result) => result.status === "rejected")) throw failure.reason;
+      return settled.map((result, index): Shot => {
+        if (result.status === "fulfilled") return result.value;
+        const reason = result.reason as Error;
+        return {
+          path: "",
+          width: 0,
+          height: 0,
+          export: exportNames[index]!,
+          consoleErrors: [],
+          warnings: [],
+          error: { message: reason.message },
+        };
+      });
     } finally {
       await driver.close();
     }

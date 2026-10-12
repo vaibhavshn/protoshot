@@ -29,6 +29,7 @@ export interface ShotError {
 }
 
 export interface Shot {
+  /** Empty when this shot could not be captured at all (see `error`). */
   path: string;
   width: number;
   height: number;

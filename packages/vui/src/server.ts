@@ -29,7 +29,7 @@ export interface Server {
   /** Build errors (transform, resolve, syntax) Vite has reported so far, oldest first. */
   errors(): ShotError[];
   /** Releases the cold-start lock once the first page has loaded (the first optimize is done). */
-  warmed(): void;
+  releaseColdStartLock(): void;
   close(): Promise<void>;
 }
 
@@ -152,7 +152,7 @@ export async function startServer(options: ServerOptions): Promise<Server> {
     pageUrl: (exportName, colorScheme) =>
       `http://127.0.0.1:${port}${PAGE_URL}?export=${encodeURIComponent(exportName)}&scheme=${colorScheme}`,
     errors: () => errors,
-    warmed: releaseLock,
+    releaseColdStartLock: releaseLock,
     close: async () => {
       releaseLock();
       await server.close();
