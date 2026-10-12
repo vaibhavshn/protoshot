@@ -23,13 +23,26 @@ test("the crop is the union of all rects", () => {
   expect(crop).toEqual({ x: 84, y: 84, width: 432 - 0, height: 332 });
 });
 
-test("the crop never extends past the viewport", () => {
-  expect(computeCrop([{ x: 1200, y: 780, width: 200, height: 100 }], viewport)).toEqual({
+test("the crop never extends past the viewport width", () => {
+  expect(computeCrop([{ x: 1200, y: 100, width: 200, height: 50 }], viewport)).toEqual({
     x: 1184,
-    y: 764,
+    y: 84,
     width: 96,
-    height: 36,
+    height: 82,
   });
+});
+
+test("content taller than the viewport is not cut off", () => {
+  expect(computeCrop([{ x: 32, y: 32, width: 900, height: 1500 }], viewport)).toEqual({
+    x: 16,
+    y: 16,
+    width: 932,
+    height: 1532,
+  });
+});
+
+test("absurdly tall content is capped", () => {
+  expect(computeCrop([{ x: 0, y: 0, width: 100, height: 50_000 }], viewport)?.height).toBe(10_000);
 });
 
 test("no rects means no crop", () => {

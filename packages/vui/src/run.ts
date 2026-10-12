@@ -14,7 +14,7 @@ const USAGE = `Usage: vui <snippet-file> [options]
 Options:
   --viewport WxH   viewport size (default 1280x800)
   --scale N        device scale factor (default 2)
-  --full           capture the whole viewport instead of cropping to the content
+  --full           capture the whole page, uncropped, instead of cropping to the content
   --export NAME    shoot one component export ("default" for the default export)
   --all            shoot every component export
   --dark           render in dark mode

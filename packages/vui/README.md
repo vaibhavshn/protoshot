@@ -42,7 +42,7 @@ A snippet is either a module that exports components, or a bare JSX expression (
 | ---------------- | ----------------------------------------------------------------------- |
 | `--viewport WxH` | Viewport size. Default `1280x800`.                                      |
 | `--scale N`      | Device scale factor. Default `2`.                                       |
-| `--full`         | Capture the whole viewport instead of cropping to the content.          |
+| `--full`         | Capture the whole page, uncropped, instead of cropping to the content.  |
 | `--export NAME`  | Shoot one component export (`default` for the default export).          |
 | `--all`          | Shoot every component export, one shot each.                            |
 | `--dark`         | Render in dark mode (see `darkClass` below).                            |

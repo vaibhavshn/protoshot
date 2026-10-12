@@ -171,3 +171,14 @@ test("Vite plugins from astro.config are applied, so Tailwind generates snippet 
   expect(readPng(file[0]!.path).pixel(20, 20)).toEqual([255, 0, 255, 255]);
   expect(readPng(inline[0]!.path).pixel(20, 20)).toEqual([0, 255, 255, 255]);
 });
+
+test("content taller than the viewport is captured in full, not cut off", async () => {
+  const host = fixture("react-vite-tailwind");
+  const [shot] = await shoot(
+    { code: '<div style={{ height: 1500, background: "#ff0000" }}>tall</div>' },
+    { cwd: host, scale: 1 },
+  );
+  const png = readPng(shot!.path);
+  expect(png.height).toBeGreaterThanOrEqual(1500);
+  expect(png.pixel(20, 1400)).toEqual([255, 0, 0, 255]);
+});
