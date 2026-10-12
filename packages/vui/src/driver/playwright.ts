@@ -5,16 +5,25 @@ import type { Driver } from "./index.ts";
 
 type Playwright = typeof import("playwright-core");
 
-/** System Chrome first, then managed Chromium (`vui install-browser`); otherwise BrowserNotFound. */
+/** Playwright's "browser is not there" launch errors, as opposed to a browser that failed to start. */
+const MISSING_BROWSER =
+  /Executable doesn't exist|distribution '[^']*' is not found|browser has not been found|Please run the following command to download/i;
+
+/**
+ * System Chrome first, then managed Chromium (`vui install-browser`). Only a missing browser is
+ * reported as BrowserNotFound; any other launch failure surfaces as-is.
+ */
 export async function launchChromium(chromium: BrowserType): Promise<Browser> {
   try {
     return await chromium.launch({ channel: "chrome", headless: true });
-  } catch {
-    try {
-      return await chromium.launch({ headless: true });
-    } catch {
-      throw new BrowserNotFound();
-    }
+  } catch (error) {
+    if (!MISSING_BROWSER.test((error as Error).message)) throw error;
+  }
+  try {
+    return await chromium.launch({ headless: true });
+  } catch (error) {
+    if (MISSING_BROWSER.test((error as Error).message)) throw new BrowserNotFound();
+    throw error;
   }
 }
 

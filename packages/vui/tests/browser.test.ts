@@ -18,13 +18,24 @@ test("with neither system Chrome nor managed Chromium, launching exits 3 naming 
   expect(error.message).toBe("No Chrome found. Run: vui install-browser");
 });
 
+test("a launch failure that is not a missing browser surfaces as-is", async () => {
+  const crashing = {
+    launch: async () => {
+      throw new Error("Target page, context or browser has been closed: sandbox failure");
+    },
+  };
+  const error = await launchChromium(crashing as never).catch((e) => e);
+  expect(error).not.toBeInstanceOf(BrowserNotFound);
+  expect(error.message).toContain("sandbox failure");
+});
+
 test("a missing system Chrome falls back to managed Chromium", async () => {
   const browser = {};
   const channels: unknown[] = [];
   const chromium = {
     launch: async (options: { channel?: string }) => {
       channels.push(options.channel);
-      if (options.channel) throw new Error("no chrome");
+      if (options.channel) throw new Error("Chromium distribution 'chrome' is not found at /x");
       return browser;
     },
   };
