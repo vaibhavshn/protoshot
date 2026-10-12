@@ -13,6 +13,7 @@ import {
 } from "./page/template.ts";
 import rendererSource from "./renderers/react.ts?raw";
 import { buildAliases } from "./aliases.ts";
+import { acquireLock } from "./lock.ts";
 import { importFromHost, resolveReact } from "./resolve.ts";
 import type { ShotError } from "./types.ts";
 
@@ -27,6 +28,8 @@ export interface Server {
   pageUrl(exportName: string, colorScheme: "light" | "dark"): string;
   /** Build errors (transform, resolve, syntax) Vite has reported so far, oldest first. */
   errors(): ShotError[];
+  /** Releases the cold-start lock once the first page has loaded (the first optimize is done). */
+  warmed(): void;
   close(): Promise<void>;
 }
 
@@ -133,39 +136,57 @@ export async function startServer(options: ServerOptions): Promise<Server> {
     errors.push(toShotError(message, options?.error as ViteError | undefined));
   };
 
-  const server: ViteDevServer = await vite.createServer({
-    customLogger: logger,
-    root: host.root,
-    configFile: hostConfigFile ?? false,
-    appType: "custom",
-    clearScreen: false,
-    logLevel: "silent",
-    plugins: [...hostPlugins, vuiPlugin(options, react.major)],
-    resolve: { alias: buildAliases(host, !hostConfigFile) },
-    server: {
-      host: "127.0.0.1",
-      port: 0,
-      strictPort: true,
-      hmr: false,
-      watch: null,
-      fs: { strict: false },
-    },
-    optimizeDeps: {
-      entries: [options.snippet],
-      include: [
-        "react",
-        "react/jsx-dev-runtime",
-        react.major >= 18 ? "react-dom/client" : "react-dom",
-      ],
-    },
-  });
-  await server.listen();
+  // Parallel cold runs would race to write the same optimized-deps cache; take turns instead.
+  const releaseLock = await acquireLock(join(host.root, ".vui", "lock"));
+  let server: ViteDevServer;
+  try {
+    server = await createViteServer();
+    await server.listen();
+  } catch (error) {
+    releaseLock();
+    throw error;
+  }
   const { port } = server.httpServer!.address() as AddressInfo;
 
   return {
     pageUrl: (exportName, colorScheme) =>
       `http://127.0.0.1:${port}${PAGE_URL}?export=${encodeURIComponent(exportName)}&scheme=${colorScheme}`,
     errors: () => errors,
-    close: () => server.close(),
+    warmed: releaseLock,
+    close: async () => {
+      releaseLock();
+      await server.close();
+    },
   };
+
+  function createViteServer(): Promise<ViteDevServer> {
+    return vite.createServer({
+      // Private to vui, so the host's own dev server cache is never disturbed.
+      cacheDir: join(host.root, "node_modules", ".vite-vui"),
+      customLogger: logger,
+      root: host.root,
+      configFile: hostConfigFile ?? false,
+      appType: "custom",
+      clearScreen: false,
+      logLevel: "silent",
+      plugins: [...hostPlugins, vuiPlugin(options, react.major)],
+      resolve: { alias: buildAliases(host, !hostConfigFile) },
+      server: {
+        host: "127.0.0.1",
+        port: 0,
+        strictPort: true,
+        hmr: false,
+        watch: null,
+        fs: { strict: false },
+      },
+      optimizeDeps: {
+        entries: [options.snippet],
+        include: [
+          "react",
+          "react/jsx-dev-runtime",
+          react.major >= 18 ? "react-dom/client" : "react-dom",
+        ],
+      },
+    });
+  }
 }

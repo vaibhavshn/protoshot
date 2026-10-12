@@ -18,6 +18,7 @@ const rawImports = {
 };
 
 export default defineConfig({
+  plugins: [rawImports],
   staged: {
     "*": "vp check --fix",
   },
@@ -36,6 +37,8 @@ export default defineConfig({
     exports: true,
   },
   test: {
+    // Vitest blanks every CSS module by default, including `freeze.css?raw`.
+    css: { include: [/freeze\.css/] },
     globalSetup: ["tests/global-setup.ts"],
     testTimeout: 60_000,
     hookTimeout: 120_000,

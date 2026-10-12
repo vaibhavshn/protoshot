@@ -32,6 +32,7 @@ export async function shoot(input: SnippetInput, options: ShootOptions = {}): Pr
         exports.map(async (exportName): Promise<Shot> => {
           const page = await driver.open({ viewport, scale: options.scale ?? 2, colorScheme });
           await page.goto(server.pageUrl(exportName, colorScheme));
+          server.warmed();
           const png = await capture(page, {
             viewport,
             full: options.full ?? false,
