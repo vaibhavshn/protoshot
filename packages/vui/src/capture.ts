@@ -13,6 +13,8 @@ export interface CaptureOptions {
   full: boolean;
   /** Extra wait: milliseconds, or a CSS selector to wait for. */
   wait?: string;
+  /** A live page rather than a rendered snippet: no mount to wait for, and no cropping to content. */
+  page?: boolean;
 }
 
 export interface Crop {
@@ -106,7 +108,7 @@ function inspectPage(): PageInfo {
 
 /** Waits until the render has settled, then takes the screenshot. */
 export async function capture(page: PageHandle, options: CaptureOptions): Promise<Uint8Array> {
-  await page.waitFor("window.__vuiDone === true", MOUNT_TIMEOUT_MS);
+  if (!options.page) await page.waitFor("window.__vuiDone === true", MOUNT_TIMEOUT_MS);
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   await page.waitForNetworkIdle(NETWORK_IDLE_CAP_MS);
   await page.evaluate(
@@ -121,6 +123,7 @@ export async function capture(page: PageHandle, options: CaptureOptions): Promis
     }
   }
   if (options.full) return page.screenshot({ fullPage: true });
+  if (options.page) return page.screenshot();
   const info = await page.evaluate(inspectPage);
   const { viewport } = options;
   const crop = computeCrop(info.rects, {

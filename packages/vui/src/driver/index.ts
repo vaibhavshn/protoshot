@@ -23,6 +23,17 @@ export interface OpenOptions {
   viewport: Viewport;
   scale: number;
   colorScheme: "light" | "dark";
+  /**
+   * Called for every top-level navigation, redirects included. Returning true aborts it; subresource
+   * requests are never asked about.
+   */
+  blockNavigation?: (url: string) => boolean;
+}
+
+/** The main document's response. */
+export interface NavigationResult {
+  status: number;
+  statusText: string;
 }
 
 export interface PageDiagnostics {
@@ -33,7 +44,8 @@ export interface PageDiagnostics {
 export interface PageHandle {
   /** Everything the page has logged or failed to load so far. */
   diagnostics(): PageDiagnostics;
-  goto(url: string): Promise<void>;
+  /** Resolves after the `load` event; null when there was no response (e.g. about:blank). */
+  goto(url: string): Promise<NavigationResult | null>;
   /** Resolves once `expression` evaluates truthy in the page. */
   waitFor(expression: string, timeoutMs: number): Promise<void>;
   /** Evaluates `fn` in the page. */

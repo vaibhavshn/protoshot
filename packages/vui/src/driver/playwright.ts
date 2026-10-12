@@ -1,4 +1,4 @@
-import type { Browser, BrowserType } from "playwright-core";
+import type { Browser, BrowserContext, BrowserType, Page } from "playwright-core";
 import { BrowserNotFound } from "../errors.ts";
 import { importFromHost } from "../resolve.ts";
 import type { Driver } from "./index.ts";
@@ -27,6 +27,33 @@ export async function launchChromium(chromium: BrowserType): Promise<Browser> {
   }
 }
 
+/**
+ * Pauses document requests over CDP so `blockNavigation` sees every hop of a redirect chain, which
+ * `page.route` does not (it only sees the first request). Documents in child frames pass through.
+ */
+async function guardNavigation(
+  context: BrowserContext,
+  page: Page,
+  blockNavigation: (url: string) => boolean,
+): Promise<void> {
+  const session = await context.newCDPSession(page);
+  const { frameTree } = await session.send("Page.getFrameTree");
+  const mainFrameId = frameTree.frame.id;
+  session.on("Fetch.requestPaused", (event) => {
+    const blocked = event.frameId === mainFrameId && blockNavigation(event.request.url);
+    const done = blocked
+      ? session.send("Fetch.failRequest", {
+          requestId: event.requestId,
+          errorReason: "BlockedByClient",
+        })
+      : session.send("Fetch.continueRequest", { requestId: event.requestId });
+    done.catch(() => {});
+  });
+  await session.send("Fetch.enable", {
+    patterns: [{ resourceType: "Document", requestStage: "Request" }],
+  });
+}
+
 export async function launchPlaywright(hostRoot: string): Promise<Driver> {
   const mod = await importFromHost<Playwright & { default?: Playwright }>(
     "playwright-core",
@@ -37,7 +64,7 @@ export async function launchPlaywright(hostRoot: string): Promise<Driver> {
   const browser = await launchChromium(chromium);
 
   return {
-    async open({ viewport, scale, colorScheme }) {
+    async open({ viewport, scale, colorScheme, blockNavigation }) {
       const context = await browser.newContext({
         viewport,
         deviceScaleFactor: scale,
@@ -45,6 +72,7 @@ export async function launchPlaywright(hostRoot: string): Promise<Driver> {
         reducedMotion: "reduce",
       });
       const page = await context.newPage();
+      if (blockNavigation) await guardNavigation(context, page, blockNavigation);
       const consoleErrors: string[] = [];
       const warnings: string[] = [];
       page.on("console", (message) => {
@@ -64,7 +92,10 @@ export async function launchPlaywright(hostRoot: string): Promise<Driver> {
       });
       return {
         diagnostics: () => ({ consoleErrors: [...consoleErrors], warnings: [...warnings] }),
-        goto: async (url) => void (await page.goto(url)),
+        goto: async (url) => {
+          const response = await page.goto(url);
+          return response && { status: response.status(), statusText: response.statusText() };
+        },
         waitFor: async (expression, timeout) =>
           void (await page.waitForFunction(expression, undefined, { timeout })),
         evaluate: (fn) => page.evaluate(fn),

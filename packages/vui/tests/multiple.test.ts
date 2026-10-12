@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { fixture, readPng, runCli } from "./helpers.ts";
+import { fixture, parseShots, readPng, runCli } from "./helpers.ts";
 
 const host = fixture("react-vite-tailwind");
 
@@ -15,9 +15,9 @@ test("--all shoots every component export, one path per line", async () => {
   ]);
 });
 
-test("--all --json prints an array with the export of each shot", async () => {
+test("--all --json prints one object per line with the export of each shot", async () => {
   const { stdout } = await runCli(["States.tsx", "--all", "--json"], { cwd: host });
-  const shots = JSON.parse(stdout) as { export: string }[];
+  const shots = parseShots<{ export: string }>(stdout);
   expect(shots.map((s) => s.export)).toEqual(["default", "Loading", "Empty"]);
 });
 
@@ -38,7 +38,7 @@ test("diagnostics and the exit code are per shot", async () => {
 export const Broken = () => { console.error("only here"); return <div />; };`;
   const { code: exit, stdout } = await runCli(["-e", code, "--all", "--json"], { cwd: host });
   expect(exit).toBe(1);
-  const shots = JSON.parse(stdout) as { export: string; consoleErrors: string[] }[];
+  const shots = parseShots<{ export: string; consoleErrors: string[] }>(stdout);
   expect(shots.map((s) => [s.export, s.consoleErrors.length])).toEqual([
     ["default", 0],
     ["Broken", 1],

@@ -1,11 +1,14 @@
 import { parseArgs } from "node:util";
 import { UsageError, VuiError } from "./errors.ts";
 import { installBrowser } from "./install-browser.ts";
+import { openFile } from "./open.ts";
 import { runInit } from "./init.ts";
 import { shoot } from "./shoot.ts";
 import type { Shot, SnippetInput } from "./types.ts";
+import { isPageUrl } from "./url.ts";
 
 const USAGE = `Usage: vui <snippet-file> [options]
+       vui <url>        shoot a live page: https://..., or http://localhost / 127.0.0.1 only
        vui -            read the snippet from stdin
        vui -e '<jsx>'   use the argument as the snippet
        vui install-browser   install managed Chromium (when no system Chrome)
@@ -21,7 +24,8 @@ Options:
   --dark           render in dark mode
   --wait MS|SEL    extra wait: milliseconds, or a selector to wait for
   --out DIR        write shots to DIR (default: $VUI_OUT_DIR, else the OS temp dir)
-  --json           print one JSON object per shot on stdout
+  --open           open each shot in the default viewer once written (off by default)
+  --json           print one compact JSON object per shot, one per line
   --css FILE       stylesheet to load (repeatable or comma-separated); replaces vui.json/auto-detection
   --components DIR component folder whose exports need no import (repeatable or comma-separated);
                    replaces vui.json/auto-detection
@@ -44,6 +48,7 @@ export async function runCli(argv: string[]): Promise<number> {
         wait: { type: "string" },
         out: { type: "string" },
         json: { type: "boolean" },
+        open: { type: "boolean" },
         css: { type: "string", multiple: true },
         components: { type: "string", multiple: true },
       },
@@ -63,6 +68,7 @@ export async function runCli(argv: string[]): Promise<number> {
     let input: SnippetInput;
     if (values.eval !== undefined) input = { code: values.eval };
     else if (target === "-") input = { code: await readStdin() };
+    else if (target && isPageUrl(target)) input = { url: target };
     else if (target) input = { file: target };
     else {
       process.stderr.write(USAGE);
@@ -81,9 +87,19 @@ export async function runCli(argv: string[]): Promise<number> {
       components: splitList(values.components),
     });
     for (const shot of shots) process.stderr.write(describeProblems(shot));
-    if (values.json) process.stdout.write(`${JSON.stringify(shots, null, 2)}\n`);
+    if (values.json) for (const shot of shots) process.stdout.write(`${JSON.stringify(shot)}\n`);
     else for (const shot of shots) if (shot.path) process.stdout.write(`${shot.path}\n`);
-    return shots.some((shot) => shot.error || shot.consoleErrors.length > 0) ? 1 : 0;
+    if (values.open) {
+      for (const shot of shots) {
+        const problem = shot.path ? await openFile(shot.path) : undefined;
+        if (problem) process.stderr.write(`warning: ${problem}\n`);
+      }
+    }
+    // A third-party page's console noise is not the agent's mistake (ADR 0004).
+    const consoleFails = !("url" in input);
+    return shots.some((shot) => shot.error || (consoleFails && shot.consoleErrors.length > 0))
+      ? 1
+      : 0;
   } catch (error) {
     process.stderr.write(`${(error as Error).message}\n`);
     return error instanceof VuiError ? error.exitCode : 2;
@@ -98,12 +114,31 @@ function describeProblems(shot: Shot): string {
     const where = error.file
       ? ` (${error.file}${error.line ? `:${error.line}${error.column ? `:${error.column}` : ""}` : ""})`
       : "";
-    lines.push(`error: ${error.message}${where}`);
-    if (error.frame) lines.push(error.frame);
+    lines.push(`error: ${tidy(error.message)}${where}`);
+    if (error.frame) lines.push(tidy(error.frame));
   }
-  for (const message of shot.consoleErrors) lines.push(`console.error: ${message}`);
-  for (const message of shot.warnings) lines.push(`console.warn: ${message}`);
+  for (const message of shot.consoleErrors) {
+    if (!error || !repeats(error.message, message)) lines.push(`console.error: ${tidy(message)}`);
+  }
+  for (const message of shot.warnings) lines.push(`console.warn: ${tidy(message)}`);
   return lines.length ? `${lines.join("\n")}\n` : "";
+}
+
+/** Drops blank lines, which only waste space in a terminal or an agent's context. */
+function tidy(text: string): string {
+  return text.replace(/\n\s*\n+/g, "\n").trim();
+}
+
+/**
+ * Whether console output just repeats a shot's error. The browser logs a render error with leading
+ * `%o`/`%s` format placeholders, so compare on its first line that has real text.
+ */
+function repeats(errorMessage: string, consoleMessage: string): boolean {
+  const key = consoleMessage
+    .split("\n")
+    .map((line) => line.replace(/%[osdifOcj]/g, "").trim())
+    .find(Boolean);
+  return key !== undefined && errorMessage.includes(key);
 }
 
 async function readStdin(): Promise<string> {

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vite-plus/test";
 import { shoot } from "../src/index.ts";
-import { fixture, runCli } from "./helpers.ts";
+import { fixture, parseShots, runCli } from "./helpers.ts";
 
 const host = fixture("react-vite-tailwind");
 
@@ -54,7 +54,7 @@ test("--json prints one object per shot, details still go to stderr", async () =
     { cwd: host },
   );
   expect(code).toBe(1);
-  const shots = JSON.parse(stdout);
+  const shots = parseShots<{ path: string; width: number; height: number }>(stdout);
   expect(shots).toHaveLength(1);
   expect(shots[0]).toMatchObject({
     export: "default",
@@ -65,6 +65,15 @@ test("--json prints one object per shot, details still go to stderr", async () =
   expect(shots[0].width).toBeGreaterThan(0);
   expect(shots[0].height).toBeGreaterThan(0);
   expect(stderr).toContain("bad thing");
+  // One shot is one line of stdout, however long its diagnostics are.
+  expect(stdout.trimEnd().split("\n")).toHaveLength(1);
+});
+
+test("stderr has no blank lines and does not repeat the shot's error as a console error", async () => {
+  const { stderr } = await runCli(["-e", "<Nope />", "--json"], { cwd: host });
+  expect(stderr).toContain("error: ");
+  expect(stderr).not.toMatch(/\n\s*\n/);
+  expect(stderr).not.toContain("console.error: %o");
 });
 
 test("a syntax error is reported with file, line, column and a code frame", async () => {

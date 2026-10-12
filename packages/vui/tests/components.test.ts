@@ -9,7 +9,7 @@ import {
   referencedComponents,
   scanComponents,
 } from "../src/components.ts";
-import { fixture, readPng, runCli } from "./helpers.ts";
+import { fixture, parseShots, readPng, runCli } from "./helpers.ts";
 
 function host(files: Record<string, string>): string {
   const root = mkdtempSync(join(tmpdir(), "vui-components-"));
@@ -132,10 +132,7 @@ test("--all ignores names the snippet only uses", async () => {
   const snippet =
     "export default () => <Card title='a' />;\nexport const Other = () => <Card title='b' />;";
   const { stdout } = await runCli(["-e", snippet, "--all", "--json"], { cwd: react });
-  expect((JSON.parse(stdout) as { export: string }[]).map((s) => s.export)).toEqual([
-    "default",
-    "Other",
-  ]);
+  expect(parseShots<{ export: string }>(stdout).map((s) => s.export)).toEqual(["default", "Other"]);
 });
 
 test("an unknown component is a snippet error with a hint", async () => {

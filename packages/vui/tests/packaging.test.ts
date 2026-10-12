@@ -3,7 +3,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, expect, test } from "vite-plus/test";
-import { fixture, readPng, repoRoot, type Png } from "./helpers.ts";
+import { fixture, parseShots, readPng, repoRoot, type Png } from "./helpers.ts";
 
 // Packs the package and installs the tarball into a throwaway global prefix,
 // so the tests run the binary exactly as a user would after `npm i -g`.
@@ -31,7 +31,7 @@ function shootGlobally(args: string[], cwd: string) {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
-  return JSON.parse(stdout) as { path: string; consoleErrors: string[]; warnings: string[] }[];
+  return parseShots<{ path: string; consoleErrors: string[]; warnings: string[] }>(stdout);
 }
 
 // Just inside the content: the crop is symmetric, so its centre can land on text.

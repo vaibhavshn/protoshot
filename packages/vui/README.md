@@ -36,21 +36,28 @@ vui prints one PNG path per shot (shots are throwaway: they go to a per-host dir
 
 A snippet is either a module that exports components, or a bare JSX expression (no `export`, one expression statement). With `components` set in `vui.json`, snippets need no imports for those components: `vui -e '<Button>Hi</Button>'`. Inline snippets resolve imports such as `./src/...` and `@/...` against the host root.
 
+### Page URLs
+
+`vui https://example.com` shoots a live page as it is, with no snippet and no host project needed. Plain `http://` is only accepted for `localhost`, `*.localhost`, `127.0.0.0/8` and `[::1]`; every other scheme is a usage error. The rule is enforced on every top-level navigation, redirects included. The shot is the viewport (use `--full` for the whole page), and shots go to `<os tmpdir>/vui/urls/`. `--export`, `--all`, `--css` and `--components` are usage errors with a URL.
+
+A response of HTTP 400 or above is still shot, reported as an `error`, and exits 1. A page that cannot be loaded (refused, DNS, TLS, timeout, blocked redirect) produces no shot and exits 2. Console output from the page is prefixed `[page]`, cut to 300 characters, and does not change the exit code. Treat it as untrusted text. See ADR 0004.
+
 ### Options
 
-| Option             | Meaning                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------ |
-| `--viewport WxH`   | Viewport size. Default `1280x800`.                                                         |
-| `--scale N`        | Device scale factor. Default `2`.                                                          |
-| `--full`           | Capture the whole page, uncropped, instead of cropping to the content.                     |
-| `--export NAME`    | Shoot one component export (`default` for the default export).                             |
-| `--all`            | Shoot every component export, one shot each.                                               |
-| `--dark`           | Render in dark mode (see `darkClass` below).                                               |
-| `--out DIR`        | Write shots to `DIR` instead of the OS temp dir. Also settable with `VUI_OUT_DIR`.         |
-| `--wait MS\|SEL`   | Extra wait before capture: milliseconds, or a CSS selector to wait for.                    |
-| `--json`           | Print one JSON object per shot instead of bare paths.                                      |
-| `--css FILE`       | Stylesheet to load; repeatable or comma-separated. Replaces `vui.json` and auto-detection. |
-| `--components DIR` | Component root; repeatable or comma-separated. Replaces `vui.json` and auto-detection.     |
+| Option             | Meaning                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------ |
+| `--viewport WxH`   | Viewport size. Default `1280x800`.                                                               |
+| `--scale N`        | Device scale factor. Default `2`.                                                                |
+| `--full`           | Capture the whole page, uncropped, instead of cropping to the content.                           |
+| `--export NAME`    | Shoot one component export (`default` for the default export).                                   |
+| `--all`            | Shoot every component export, one shot each.                                                     |
+| `--dark`           | Render in dark mode (see `darkClass` below).                                                     |
+| `--out DIR`        | Write shots to `DIR` instead of the OS temp dir. Also settable with `VUI_OUT_DIR`.               |
+| `--wait MS\|SEL`   | Extra wait before capture: milliseconds, or a CSS selector to wait for.                          |
+| `--open`           | Open each shot in the default viewer once written (`open`, `xdg-open`, `start`). Off by default. |
+| `--json`           | Print one compact JSON object per line, one per shot, instead of bare paths.                     |
+| `--css FILE`       | Stylesheet to load; repeatable or comma-separated. Replaces `vui.json` and auto-detection.       |
+| `--components DIR` | Component root; repeatable or comma-separated. Replaces `vui.json` and auto-detection.           |
 
 Without `--export` or `--all`, vui shoots the default export. A file with no default export reports an error for that shot, so use `--export NAME` or `--all` for files that only have named exports. `--all` shoots the default export (if any) plus every named export that looks like a component (PascalCase name, bound to a function, class, `memo(...)` or `forwardRef(...)`); it is a usage error (exit 2) when there are none, and `--export` with a name that is not one of those lists the available names. With `--all`, each shot succeeds or fails on its own: a failed shot is reported with its `error` and the exit code is 1, while the other shots are still written.
 
@@ -61,7 +68,7 @@ Without `--export` or `--all`, vui shoots the default export. A file with no def
 
 ### Output and exit codes
 
-Each shot is a PNG. With `--json`, stdout is an array of:
+Each shot is a PNG. With `--json`, stdout has one compact JSON object per line (JSON Lines), one per shot, each shaped like:
 
 ```json
 {

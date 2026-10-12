@@ -1,1 +1,5 @@
-{ "name": "@fixture/app", "private": true, "type": "module" }
+{
+  "name": "@fixture/app",
+  "private": true,
+  "type": "module"
+}

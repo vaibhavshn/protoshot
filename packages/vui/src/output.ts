@@ -13,12 +13,14 @@ export interface WrittenShot {
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Where shots go: `outDir`, else `$VUI_OUT_DIR`, else `<os tmpdir>/vui/<hash of host root>`.
- * Shots are throwaway, so the default is outside the host repo, namespaced per host.
+ * Where shots go: `outDir`, else `$VUI_OUT_DIR`, else `<os tmpdir>/vui/<hash of host root>`, or
+ * `<os tmpdir>/vui/urls` for a page URL (`hostRoot` undefined). Shots are throwaway, so the default
+ * is outside the host repo, namespaced per host.
  */
-export function shotsDir(hostRoot: string, outDir?: string): string {
+export function shotsDir(hostRoot: string | undefined, outDir?: string): string {
   const explicit = outDir ?? process.env.VUI_OUT_DIR;
   if (explicit) return explicit;
+  if (hostRoot === undefined) return join(tmpdir(), "vui", "urls");
   const hash = createHash("sha1").update(hostRoot).digest("hex").slice(0, 10);
   return join(tmpdir(), "vui", hash);
 }

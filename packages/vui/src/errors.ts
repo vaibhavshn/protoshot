@@ -29,6 +29,13 @@ export class ReactNotFound extends VuiError {
   }
 }
 
+/** The page could not be loaded at all: refused, DNS, TLS, timeout, or a blocked redirect. */
+export class NavigationError extends VuiError {
+  constructor(message: string) {
+    super(message, 2);
+  }
+}
+
 export class BrowserNotFound extends VuiError {
   constructor() {
     super("No Chrome found. Run: vui install-browser", 3);

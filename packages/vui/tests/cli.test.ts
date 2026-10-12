@@ -58,3 +58,15 @@ test("a malformed --viewport is a usage error", async () => {
   expect(code).toBe(2);
   expect(stderr).toContain("--viewport");
 });
+
+test("a non-https, non-loopback URL is a usage error", async () => {
+  const { code, stderr } = await runCli(["http://example.com"]);
+  expect(code).toBe(2);
+  expect(stderr).toContain("https");
+});
+
+test("snippet-only flags are a usage error with a URL", async () => {
+  const { code, stderr } = await runCli(["https://example.com", "--all"]);
+  expect(code).toBe(2);
+  expect(stderr).toContain("--all");
+});

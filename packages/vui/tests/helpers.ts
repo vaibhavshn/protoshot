@@ -92,3 +92,11 @@ export function readPng(path: string): Png {
     },
   };
 }
+
+/** Parses `--json` output: one compact JSON object per line. */
+export function parseShots<T = Record<string, unknown>>(stdout: string): T[] {
+  return stdout
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as T);
+}

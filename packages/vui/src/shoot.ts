@@ -10,9 +10,11 @@ import { loadHost } from "./host.ts";
 import { pruneShots, shotsDir, writeShot } from "./output.ts";
 import { listComponentExports, toModuleSource } from "./snippet.ts";
 import { startServer } from "./server.ts";
+import { shootUrl } from "./shoot-url.ts";
 import type { ShootOptions, Shot, ShotError, SnippetInput } from "./types.ts";
 
 export async function shoot(input: SnippetInput, options: ShootOptions = {}): Promise<Shot[]> {
+  if ("url" in input) return shootUrl(input.url, options);
   const cwd = options.cwd ?? process.cwd();
   const host = loadHost(cwd, { css: options.css, components: options.components });
   const snippet =
