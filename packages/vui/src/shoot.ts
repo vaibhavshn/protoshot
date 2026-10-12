@@ -27,32 +27,32 @@ export async function shoot(input: SnippetInput, options: ShootOptions = {}): Pr
     try {
       const viewport = options.viewport ?? { width: 1280, height: 800 };
       const colorScheme = options.dark ? "dark" : "light";
-      const shots: Shot[] = [];
-      for (const exportName of exports) {
-        const errorsBefore = server.errors().length;
-        const page = await driver.open({ viewport, scale: options.scale ?? 2, colorScheme });
-        await page.goto(server.pageUrl(exportName, colorScheme));
-        const png = await capture(page, {
-          viewport,
-          full: options.full ?? false,
-          wait: options.wait,
-        });
-        const { consoleErrors, warnings } = page.diagnostics();
-        const pageError = await page.evaluate(
-          () => (window as unknown as { __vuiError?: ShotError }).__vuiError,
-        );
-        await page.close();
-        // Vite knows the file and line; the browser only sees "failed to fetch module".
-        const error = server.errors().slice(errorsBefore)[0] ?? pageError;
-        shots.push({
-          ...writeShot(host.root, png),
-          export: exportName,
-          consoleErrors,
-          warnings,
-          error,
-        });
-      }
-      return shots;
+      // One page per shot, all against the same server and browser.
+      return await Promise.all(
+        exports.map(async (exportName): Promise<Shot> => {
+          const page = await driver.open({ viewport, scale: options.scale ?? 2, colorScheme });
+          await page.goto(server.pageUrl(exportName, colorScheme));
+          const png = await capture(page, {
+            viewport,
+            full: options.full ?? false,
+            wait: options.wait,
+          });
+          const { consoleErrors, warnings } = page.diagnostics();
+          const pageError = await page.evaluate(
+            () => (window as unknown as { __vuiError?: ShotError }).__vuiError,
+          );
+          await page.close();
+          // Vite knows the file and line; the browser only sees "failed to fetch module".
+          const error = server.errors()[0] ?? pageError;
+          return {
+            ...writeShot(host.root, png),
+            export: exportName,
+            consoleErrors,
+            warnings,
+            error,
+          };
+        }),
+      );
     } finally {
       await driver.close();
     }
