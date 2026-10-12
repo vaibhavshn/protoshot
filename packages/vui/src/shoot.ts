@@ -27,6 +27,7 @@ export async function shoot(input: SnippetInput, options: ShootOptions = {}): Pr
       const colorScheme = options.dark ? "dark" : "light";
       const page = await driver.open({ viewport, scale: options.scale ?? 2, colorScheme });
       await page.goto(server.pageUrl("default", colorScheme));
+      server.warmed();
       const png = await capture(page, {
         viewport,
         full: options.full ?? false,
