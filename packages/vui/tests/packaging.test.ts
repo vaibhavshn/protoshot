@@ -34,13 +34,14 @@ function shootGlobally(args: string[], cwd: string) {
   return JSON.parse(stdout) as { path: string; consoleErrors: string[]; warnings: string[] }[];
 }
 
-const center = (png: Png) => png.pixel(png.width >> 1, png.height >> 1);
+// Just inside the content: the crop is symmetric, so its centre can land on text.
+const contentPixel = (png: Png) => png.pixel(42, 42);
 
 test("the installed tarball renders a Tailwind host through the host's Vite", () => {
   const [shot] = shootGlobally(["Button.tsx"], fixture("react-vite-tailwind"));
   expect(shot!.consoleErrors).toEqual([]);
   expect(shot!.warnings).toEqual([]);
-  expect(center(readPng(shot!.path))).toEqual([0, 255, 0, 255]);
+  expect(contentPixel(readPng(shot!.path))).toEqual([0, 255, 0, 255]);
 });
 
 test("the installed tarball falls back to its own Vite for a host without one, with a single React", () => {
@@ -48,12 +49,12 @@ test("the installed tarball falls back to its own Vite for a host without one, w
   // A duplicate React would break the Wrapper's context (red box) or warn.
   expect(shot!.consoleErrors).toEqual([]);
   expect(shot!.warnings).toEqual([]);
-  expect(center(readPng(shot!.path))).toEqual([0, 0, 255, 255]);
+  expect(contentPixel(readPng(shot!.path))).toEqual([0, 0, 255, 255]);
 });
 
 test("the installed tarball renders from a monorepo package directory", () => {
   const cwd = join(fixture("monorepo"), "packages/app");
   const [shot] = shootGlobally(["src/Hello.tsx"], cwd);
   expect(shot!.consoleErrors).toEqual([]);
-  expect(center(readPng(shot!.path))).toEqual([0, 0, 255, 255]);
+  expect(contentPixel(readPng(shot!.path))).toEqual([0, 0, 255, 255]);
 });

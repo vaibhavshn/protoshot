@@ -73,7 +73,31 @@ export async function launchPlaywright(hostRoot: string): Promise<Driver> {
         },
         waitForSelector: async (selector, timeout) =>
           void (await page.waitForSelector(selector, { timeout })),
-        screenshot: (options) => page.screenshot({ type: "png", ...options }),
+        screenshot: async ({ pad, ...options } = {}) => {
+          const shot = await page.screenshot({ type: "png", ...options });
+          if (!pad) return shot;
+          // Composite on a canvas in the page, which is already done rendering.
+          const padded = await page.evaluate(
+            async ({ base64, pad, scale }) => {
+              const image = new Image();
+              image.src = `data:image/png;base64,${base64}`;
+              await image.decode();
+              const [top, right, bottom, left] = [pad.top, pad.right, pad.bottom, pad.left].map(
+                (side) => Math.round(side * scale),
+              );
+              const canvas = document.createElement("canvas");
+              canvas.width = left + image.width + right;
+              canvas.height = top + image.height + bottom;
+              const context = canvas.getContext("2d")!;
+              context.fillStyle = pad.color;
+              context.fillRect(0, 0, canvas.width, canvas.height);
+              context.drawImage(image, left, top);
+              return canvas.toDataURL("image/png").split(",")[1]!;
+            },
+            { base64: shot.toString("base64"), pad, scale },
+          );
+          return Buffer.from(padded, "base64");
+        },
         close: () => context.close(),
       };
     },

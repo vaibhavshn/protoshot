@@ -111,13 +111,13 @@ test("snippets use Component root components without imports", async () => {
   });
   expect(code).toBe(0);
   // Card is blue only when the Wrapper's provider is active.
-  expect(readPng(stdout.trim()).pixel(20, 20)).toEqual([0, 0, 255, 255]);
+  expect(readPng(stdout.trim()).pixel(52, 52)).toEqual([0, 0, 255, 255]);
 });
 
 test("a default export is in scope under the CamelCased filename", async () => {
   const { code, stdout } = await runCli(["-e", "<StatusBadge />", "--scale", "1"], { cwd: react });
   expect(code).toBe(0);
-  expect(readPng(stdout.trim()).pixel(20, 20)).toEqual([0, 255, 0, 255]);
+  expect(readPng(stdout.trim()).pixel(52, 52)).toEqual([0, 255, 0, 255]);
 });
 
 test("a name the snippet declares itself wins over the Component root", async () => {
@@ -125,7 +125,7 @@ test("a name the snippet declares itself wins over the Component root", async ()
     'const StatusBadge = () => <div className="h-24 w-48 bg-[#ff0000]" />;\nexport default StatusBadge;';
   const { code, stdout } = await runCli(["-e", snippet, "--scale", "1"], { cwd: react });
   expect(code).toBe(0);
-  expect(readPng(stdout.trim()).pixel(20, 20)).toEqual([255, 0, 0, 255]);
+  expect(readPng(stdout.trim()).pixel(52, 52)).toEqual([255, 0, 0, 255]);
 });
 
 test("--all ignores names the snippet only uses", async () => {

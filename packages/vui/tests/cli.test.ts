@@ -23,7 +23,7 @@ test("`vui -e` renders the argument", async () => {
     cwd: host,
   });
   expect(code).toBe(0);
-  expect(readPng(stdout.trim()).pixel(10, 10)).toEqual([0, 255, 0, 255]);
+  expect(readPng(stdout.trim()).pixel(42, 42)).toEqual([0, 255, 0, 255]);
 });
 
 test("`vui -` renders stdin", async () => {
@@ -33,7 +33,7 @@ test("`vui -` renders stdin", async () => {
     stdin: '<i className="bg-[#00ff00] p-4">x</i>',
   });
   expect(code).toBe(0);
-  expect(readPng(stdout.trim()).pixel(10, 10)).toEqual([0, 255, 0, 255]);
+  expect(readPng(stdout.trim()).pixel(42, 42)).toEqual([0, 255, 0, 255]);
 });
 
 test("--viewport, --scale and --full control the shot", async () => {
@@ -50,7 +50,7 @@ test("--viewport, --scale and --full control the shot", async () => {
 test("--dark renders in dark mode", async () => {
   const host = fixture("react-vite-tailwind");
   const { stdout } = await runCli(["Themed.tsx", "--dark"], { cwd: host });
-  expect(readPng(stdout.trim()).pixel(20, 20)).toEqual([0, 0, 0, 255]);
+  expect(readPng(stdout.trim()).pixel(52, 52)).toEqual([0, 0, 0, 255]);
 });
 
 test("a malformed --viewport is a usage error", async () => {

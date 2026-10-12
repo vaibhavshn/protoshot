@@ -39,7 +39,7 @@ test("`vui init` in react-plain writes a config that renders with no edits", asy
   });
   const shot = await runCli(["-e", '<div className="card" />'], { cwd: host });
   expect(shot.code).toBe(0);
-  expect(readPng(shot.stdout.trim()).pixel(20, 20)).toEqual([0, 0, 255, 255]);
+  expect(readPng(shot.stdout.trim()).pixel(52, 52)).toEqual([0, 0, 255, 255]);
 });
 
 test('`vui init` finds the file containing @import "tailwindcss"', async () => {

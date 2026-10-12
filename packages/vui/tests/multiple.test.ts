@@ -8,7 +8,7 @@ test("--all shoots every component export, one path per line", async () => {
   expect(code).toBe(0);
   const paths = stdout.trim().split("\n");
   expect(paths).toHaveLength(3);
-  expect(paths.map((p) => readPng(p).pixel(5, 5))).toEqual([
+  expect(paths.map((p) => readPng(p).pixel(37, 37))).toEqual([
     [0, 255, 0, 255],
     [0, 0, 255, 255],
     [255, 0, 0, 255],
@@ -25,7 +25,7 @@ test("--export shoots one export; an unknown name is a usage error", async () =>
   const one = await runCli(["States.tsx", "--export", "Loading", "--scale", "1"], { cwd: host });
   expect(one.code).toBe(0);
   expect(one.stdout.trim().split("\n")).toHaveLength(1);
-  expect(readPng(one.stdout.trim()).pixel(5, 5)).toEqual([0, 0, 255, 255]);
+  expect(readPng(one.stdout.trim()).pixel(37, 37)).toEqual([0, 0, 255, 255]);
 
   const bad = await runCli(["States.tsx", "--export", "Nope"], { cwd: host });
   expect(bad.code).toBe(2);

@@ -5,6 +5,15 @@ export interface Rect {
   height: number;
 }
 
+/** CSS pixels of blank space to add around a screenshot, filled with `color` (any CSS color). */
+export interface Padding {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+  color: string;
+}
+
 export interface Viewport {
   width: number;
   height: number;
@@ -32,7 +41,8 @@ export interface PageHandle {
   /** Waits for the network to be quiet for 500ms, giving up silently after `capMs`. */
   waitForNetworkIdle(capMs: number): Promise<void>;
   waitForSelector(selector: string, timeoutMs: number): Promise<void>;
-  screenshot(options?: { clip?: Rect; fullPage?: boolean }): Promise<Uint8Array>;
+  /** `pad` grows the shot beyond the page's edges, which a clip cannot reach. */
+  screenshot(options?: { clip?: Rect; fullPage?: boolean; pad?: Padding }): Promise<Uint8Array>;
   close(): Promise<void>;
 }
 
