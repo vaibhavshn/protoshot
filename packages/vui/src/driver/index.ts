@@ -16,7 +16,14 @@ export interface OpenOptions {
   colorScheme: "light" | "dark";
 }
 
+export interface PageDiagnostics {
+  consoleErrors: string[];
+  warnings: string[];
+}
+
 export interface PageHandle {
+  /** Everything the page has logged or failed to load so far. */
+  diagnostics(): PageDiagnostics;
   goto(url: string): Promise<void>;
   /** Resolves once `expression` evaluates truthy in the page. */
   waitFor(expression: string, timeoutMs: number): Promise<void>;

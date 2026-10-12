@@ -32,7 +32,25 @@ export async function launchPlaywright(hostRoot: string): Promise<Driver> {
         reducedMotion: "reduce",
       });
       const page = await context.newPage();
+      const consoleErrors: string[] = [];
+      const warnings: string[] = [];
+      page.on("console", (message) => {
+        const text = message.text();
+        if (message.type() === "warning") warnings.push(text);
+        // Chrome also logs a console error per failed load; the request listeners report those.
+        else if (message.type() === "error" && !text.startsWith("Failed to load resource"))
+          consoleErrors.push(text);
+      });
+      page.on("pageerror", (error) => consoleErrors.push(error.message));
+      page.on("requestfailed", (request) =>
+        consoleErrors.push(`Request failed: ${request.url()} (${request.failure()?.errorText})`),
+      );
+      page.on("response", (response) => {
+        if (response.status() >= 400)
+          consoleErrors.push(`Request failed: ${response.url()} (${response.status()})`);
+      });
       return {
+        diagnostics: () => ({ consoleErrors: [...consoleErrors], warnings: [...warnings] }),
         goto: async (url) => void (await page.goto(url)),
         waitFor: async (expression, timeout) =>
           void (await page.waitForFunction(expression, undefined, { timeout })),

@@ -14,14 +14,19 @@ import {
 import rendererSource from "./renderers/react.ts?raw";
 import { buildAliases } from "./aliases.ts";
 import { importFromHost, resolveReact } from "./resolve.ts";
+import type { ShotError } from "./types.ts";
 
 const TAILWIND_V4_IMPORT = /@import\s+["']tailwindcss["']/;
+// eslint-disable-next-line no-control-regex
+const ANSI = /\u001b\[[0-9;]*m/g;
 const SHIM_URL = "/__vui__/react-dom-client-shim.js";
 const VITE_CONFIGS = ["ts", "mts", "js", "mjs", "cts", "cjs"].map((ext) => `vite.config.${ext}`);
 
 export interface Server {
   /** Page URL for a shot of `exportName`. */
   pageUrl(exportName: string, colorScheme: "light" | "dark"): string;
+  /** Build errors (transform, resolve, syntax) Vite has reported so far, oldest first. */
+  errors(): ShotError[];
   close(): Promise<void>;
 }
 
@@ -83,6 +88,29 @@ function vuiPlugin(options: ServerOptions, reactMajor: number): Plugin {
   };
 }
 
+interface ViteError extends Error {
+  loc?: { file?: string; line?: number; column?: number };
+  id?: string;
+  frame?: string;
+}
+
+/**
+ * Vite's esbuild-style errors carry `loc` and `frame`; Rolldown's carry neither and only embed a
+ * rendered `╭─[ file:line:col ]` frame in the message, so that is parsed as a fallback.
+ */
+function toShotError(logged: string, error: ViteError | undefined): ShotError {
+  const text = (error?.message ?? logged).replace(ANSI, "");
+  const rendered = /^.*╭─\[ (.+?):(\d+):(\d+) \][\s\S]*?╯/m.exec(text);
+  const summary = /^\[[A-Z_]+\] (.+)$/m.exec(text)?.[1];
+  return {
+    message: summary ?? text,
+    file: error?.loc?.file ?? error?.id ?? rendered?.[1],
+    line: error?.loc?.line ?? (rendered ? Number(rendered[2]) : undefined),
+    column: error?.loc?.column ?? (rendered ? Number(rendered[3]) : undefined),
+    frame: error?.frame?.replace(ANSI, "") ?? rendered?.[0],
+  };
+}
+
 export async function startServer(options: ServerOptions): Promise<Server> {
   const { host } = options;
   const react = resolveReact(host.root);
@@ -97,7 +125,16 @@ export async function startServer(options: ServerOptions): Promise<Server> {
         ).default(),
       ];
 
+  const errors: ShotError[] = [];
+  const logger = vite.createLogger("error", { allowClearScreen: false });
+  logger.error = (message, options) => {
+    // The dependency scan reports the same parse error without a location; skip it.
+    if (message.includes("Failed to run dependency scan")) return;
+    errors.push(toShotError(message, options?.error as ViteError | undefined));
+  };
+
   const server: ViteDevServer = await vite.createServer({
+    customLogger: logger,
     root: host.root,
     configFile: hostConfigFile ?? false,
     appType: "custom",
@@ -128,6 +165,7 @@ export async function startServer(options: ServerOptions): Promise<Server> {
   return {
     pageUrl: (exportName, colorScheme) =>
       `http://127.0.0.1:${port}${PAGE_URL}?export=${encodeURIComponent(exportName)}&scheme=${colorScheme}`,
+    errors: () => errors,
     close: () => server.close(),
   };
 }

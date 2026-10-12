@@ -7,7 +7,7 @@ export const PAGE_URL = "/__vui__/index.html";
 export function pageHtml(): string {
   return `<!doctype html>
 <html>
-<head><meta charset="utf-8"><style>${freezeCss}</style></head>
+<head><meta charset="utf-8"><link rel="icon" href="data:,"><style>${freezeCss}</style></head>
 <body>
 <div id="root"></div>
 <script type="module" src="${ENTRY_URL}"></script>
@@ -26,22 +26,22 @@ export interface EntryOptions {
 /** Client entry: loads host CSS, Wrapper and snippet, then hands them to the renderer. */
 export function entrySource(options: EntryOptions): string {
   const q = JSON.stringify;
-  return `import { mount } from ${q(RENDERER_URL)};
+  return `import { mount, showError } from ${q(RENDERER_URL)};
 const params = new URLSearchParams(location.search);
 const colorScheme = params.get("scheme") === "dark" ? "dark" : "light";
 const darkClass = ${q(options.darkClass ?? null)};
 if (colorScheme === "dark" && darkClass) document.documentElement.classList.add(darkClass);
-${options.css.map((file) => `await import(${q(file)});`).join("\n")}
-const Wrapper = ${options.wrapper ? `(await import(${q(options.wrapper)})).default` : "undefined"};
-const module = await import(${q(options.snippet)});
-await mount({
-  module,
-  exportName: params.get("export") ?? "default",
-  Wrapper,
-  colorScheme,
-  container: document.getElementById("root"),
-});
-window.__vuiMounted = true;
+const container = document.getElementById("root");
+try {
+${options.css.map((file) => `  await import(${q(file)});`).join("\n")}
+  const Wrapper = ${options.wrapper ? `(await import(${q(options.wrapper)})).default` : "undefined"};
+  const module = await import(${q(options.snippet)});
+  await mount({ module, exportName: params.get("export") ?? "default", Wrapper, colorScheme, container });
+} catch (error) {
+  window.__vuiError = { message: error?.message ?? String(error) };
+  showError(container, window.__vuiError.message);
+}
+window.__vuiDone = true;
 `;
 }
 

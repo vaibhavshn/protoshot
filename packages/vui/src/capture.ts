@@ -43,7 +43,7 @@ function visibleRects(): Rect[] {
 
 /** Waits until the render has settled, then takes the screenshot. */
 export async function capture(page: PageHandle, options: CaptureOptions): Promise<Uint8Array> {
-  await page.waitFor("window.__vuiMounted === true", MOUNT_TIMEOUT_MS);
+  await page.waitFor("window.__vuiDone === true", MOUNT_TIMEOUT_MS);
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   await page.waitForNetworkIdle(NETWORK_IDLE_CAP_MS);
   await page.evaluate(

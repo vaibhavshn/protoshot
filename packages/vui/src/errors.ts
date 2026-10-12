@@ -8,6 +8,12 @@ export class VuiError extends Error {
   }
 }
 
+export class UsageError extends VuiError {
+  constructor(message: string) {
+    super(message, 2);
+  }
+}
+
 export class ConfigError extends VuiError {
   constructor(message: string) {
     super(message, 2);

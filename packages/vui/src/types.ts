@@ -16,9 +16,23 @@ export interface ShootOptions {
   wait?: string;
 }
 
+export interface ShotError {
+  message: string;
+  file?: string;
+  line?: number;
+  column?: number;
+  frame?: string;
+}
+
 export interface Shot {
   path: string;
   width: number;
   height: number;
   export: string;
+  /** console.error output, uncaught page errors and failed requests. */
+  consoleErrors: string[];
+  /** console.warn output. */
+  warnings: string[];
+  /** Set when the snippet failed to build or render; the shot then shows the error. */
+  error?: ShotError;
 }

@@ -1,19 +1,23 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { UsageError } from "./errors.ts";
 import { capture } from "./capture.ts";
 import { launchPlaywright } from "./driver/playwright.ts";
 import { loadHost } from "./host.ts";
 import { writeShot } from "./output.ts";
 import { toModuleSource } from "./snippet.ts";
 import { startServer } from "./server.ts";
-import type { ShootOptions, Shot, SnippetInput } from "./types.ts";
+import type { ShootOptions, Shot, ShotError, SnippetInput } from "./types.ts";
 
 export async function shoot(input: SnippetInput, options: ShootOptions = {}): Promise<Shot[]> {
   const cwd = options.cwd ?? process.cwd();
   const host = loadHost(cwd);
   const snippet =
     "file" in input ? resolve(cwd, input.file) : writeInlineSnippet(host.root, input.code);
+  if ("file" in input && !existsSync(snippet)) {
+    throw new UsageError(`Snippet file not found: ${input.file}`);
+  }
 
   const server = await startServer({ host, snippet });
   try {
@@ -28,8 +32,14 @@ export async function shoot(input: SnippetInput, options: ShootOptions = {}): Pr
         full: options.full ?? false,
         wait: options.wait,
       });
+      const { consoleErrors, warnings } = page.diagnostics();
+      const pageError = await page.evaluate(
+        () => (window as unknown as { __vuiError?: ShotError }).__vuiError,
+      );
       await page.close();
-      return [{ ...writeShot(host.root, png), export: "default" }];
+      // Vite knows the file and line; the browser only sees "failed to fetch module".
+      const error = server.errors()[0] ?? pageError;
+      return [{ ...writeShot(host.root, png), export: "default", consoleErrors, warnings, error }];
     } finally {
       await driver.close();
     }

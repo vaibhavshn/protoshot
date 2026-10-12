@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
-import { VuiError } from "./errors.ts";
+import { UsageError, VuiError } from "./errors.ts";
 import { shoot } from "./shoot.ts";
-import type { SnippetInput } from "./types.ts";
+import type { Shot, SnippetInput } from "./types.ts";
 
 const USAGE = `Usage: vui <snippet-file> [options]
        vui -            read the snippet from stdin
@@ -13,6 +13,7 @@ Options:
   --full           capture the whole viewport instead of cropping to the content
   --dark           render in dark mode
   --wait MS|SEL    extra wait: milliseconds, or a selector to wait for
+  --json           print one JSON object per shot on stdout
 `;
 
 /** argv → shoot() → stdout/stderr/exit code. Returns the exit code. */
@@ -28,6 +29,7 @@ export async function runCli(argv: string[]): Promise<number> {
         full: { type: "boolean" },
         dark: { type: "boolean" },
         wait: { type: "string" },
+        json: { type: "boolean" },
       },
       allowPositionals: true,
     });
@@ -51,24 +53,36 @@ export async function runCli(argv: string[]): Promise<number> {
       dark: values.dark,
       wait: values.wait,
     });
-    for (const shot of shots) process.stdout.write(`${shot.path}\n`);
-    return 0;
+    for (const shot of shots) process.stderr.write(describeProblems(shot));
+    if (values.json) process.stdout.write(`${JSON.stringify(shots, null, 2)}\n`);
+    else for (const shot of shots) process.stdout.write(`${shot.path}\n`);
+    return shots.some((shot) => shot.error || shot.consoleErrors.length > 0) ? 1 : 0;
   } catch (error) {
     process.stderr.write(`${(error as Error).message}\n`);
     return error instanceof VuiError ? error.exitCode : 2;
   }
 }
 
+/** Human-readable details for one shot, for stderr. Empty when the shot is clean. */
+function describeProblems(shot: Shot): string {
+  const lines: string[] = [];
+  const { error } = shot;
+  if (error) {
+    const where = error.file
+      ? ` (${error.file}${error.line ? `:${error.line}${error.column ? `:${error.column}` : ""}` : ""})`
+      : "";
+    lines.push(`error: ${error.message}${where}`);
+    if (error.frame) lines.push(error.frame);
+  }
+  for (const message of shot.consoleErrors) lines.push(`console.error: ${message}`);
+  for (const message of shot.warnings) lines.push(`console.warn: ${message}`);
+  return lines.length ? `${lines.join("\n")}\n` : "";
+}
+
 async function readStdin(): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
   return Buffer.concat(chunks).toString("utf8");
-}
-
-class UsageError extends VuiError {
-  constructor(message: string) {
-    super(message, 2);
-  }
 }
 
 function parseViewport(value: string | undefined) {
