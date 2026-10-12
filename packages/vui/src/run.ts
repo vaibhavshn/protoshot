@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import { UsageError, VuiError } from "./errors.ts";
+import { runInit } from "./init.ts";
 import { shoot } from "./shoot.ts";
 import type { Shot, SnippetInput } from "./types.ts";
 
@@ -10,6 +11,7 @@ const USAGE = `Usage: vui <snippet-file> [options]
        vui -            read the snippet from stdin
        vui -e '<jsx>'   use the argument as the snippet
        vui install-browser   install managed Chromium (when no system Chrome)
+       vui init         write vui.json, update .gitignore and AGENTS.md/CLAUDE.md
 
 Options:
   --viewport WxH   viewport size (default 1280x800)
@@ -43,6 +45,11 @@ export async function runCli(argv: string[]): Promise<number> {
     }
     const [target] = positionals;
     if (target === "install-browser") return await installBrowser();
+    if (target === "init" && values.eval === undefined) {
+      const report = await runInit(process.cwd(), Boolean(process.stdin.isTTY));
+      process.stdout.write(`${report.join("\n")}\n`);
+      return 0;
+    }
     let input: SnippetInput;
     if (values.eval !== undefined) input = { code: values.eval };
     else if (target === "-") input = { code: await readStdin() };
