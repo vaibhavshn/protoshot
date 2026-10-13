@@ -195,6 +195,40 @@ test("Vite plugins from astro.config are applied, so Tailwind generates snippet 
   expect(readPng(inline[0]!.path).pixel(52, 52)).toEqual([0, 255, 255, 255]);
 });
 
+test("ignored host Vite plugins never run, by default or via ignorePlugins", async () => {
+  const source = fixture("react-vite-tailwind");
+  const host = mkdtempSync(join(tmpdir(), "protoshot-host-"));
+  cpSync(source, host, {
+    recursive: true,
+    filter: (src) => !src.includes("node_modules") && !src.endsWith("vite.config.ts"),
+  });
+  symlinkSync(join(source, "node_modules"), join(host, "node_modules"));
+  const config = JSON.parse(readFileSync(join(source, "protoshot.json"), "utf8"));
+  writeFileSync(
+    join(host, "protoshot.json"),
+    JSON.stringify({ ...config, ignorePlugins: ["my-overlay"] }),
+  );
+  writeFileSync(
+    join(host, "vite.config.ts"),
+    `import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+const boom = () => { throw new Error("ignored plugin ran"); };
+export default () => ({
+  plugins: [
+    react(),
+    tailwindcss(),
+    [{ name: "vite-plugin-cloudflare", config: boom }, { name: "vite-plugin-cloudflare:dev", configureServer: boom }],
+    { name: "my-overlay", configResolved: boom },
+  ],
+  resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
+});
+`,
+  );
+  const [shot] = await shoot({ file: join(host, "Button.tsx") }, { cwd: host, scale: 1 });
+  expect(shot!.error).toBeUndefined();
+  expect(readPng(shot!.path).pixel(20, 20)).toEqual([0, 255, 0, 255]);
+});
+
 test("content taller than the viewport is captured in full, not cut off", async () => {
   const host = fixture("react-vite-tailwind");
   const [shot] = await shoot(

@@ -148,17 +148,19 @@ protoshot finds your project root by walking up from the current directory to th
   "components": ["src/components"],
   "wrapper": "src/Wrapper.tsx",
   "darkClass": "dark",
-  "alias": { "@ui": "packages/ui/src" }
+  "alias": { "@ui": "packages/ui/src" },
+  "ignorePlugins": ["my-analytics"]
 }
 ```
 
-| Key          | Type                     | Meaning                                                                                                                                                                              |
-| ------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `css`        | `string[]`               | Global stylesheets loaded before the snippet: your app's entry CSS, Tailwind included.                                                                                               |
-| `components` | `string[]`               | Component roots: directories scanned recursively (ignoring `*.test.*`, `*.stories.*`, `*.d.ts`). Their PascalCase exports are in scope in every snippet without an import. No globs. |
-| `wrapper`    | `string`                 | A component that wraps every snippet, for providers (theme, router, and so on). Its default export receives `{ children, colorScheme }`.                                             |
-| `darkClass`  | `string`                 | Class added to `<html>` with `--dark`, for class-based dark mode. `--dark` also emulates `prefers-color-scheme: dark` and passes `colorScheme="dark"` to the wrapper.                |
-| `alias`      | `Record<string, string>` | Extra import aliases, merged over `tsconfig.json` `compilerOptions.paths`. Targets are relative to the project root. `protoshot.json` wins on conflicts.                             |
+| Key             | Type                     | Meaning                                                                                                                                                                              |
+| --------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `css`           | `string[]`               | Global stylesheets loaded before the snippet: your app's entry CSS, Tailwind included.                                                                                               |
+| `components`    | `string[]`               | Component roots: directories scanned recursively (ignoring `*.test.*`, `*.stories.*`, `*.d.ts`). Their PascalCase exports are in scope in every snippet without an import. No globs. |
+| `wrapper`       | `string`                 | A component that wraps every snippet, for providers (theme, router, and so on). Its default export receives `{ children, colorScheme }`.                                             |
+| `darkClass`     | `string`                 | Class added to `<html>` with `--dark`, for class-based dark mode. `--dark` also emulates `prefers-color-scheme: dark` and passes `colorScheme="dark"` to the wrapper.                |
+| `alias`         | `Record<string, string>` | Extra import aliases, merged over `tsconfig.json` `compilerOptions.paths`. Targets are relative to the project root. `protoshot.json` wins on conflicts.                             |
+| `ignorePlugins` | `string[]`               | Vite plugin names to drop from your config, on top of the built-in list (see [Build setup](#build-setup)). A name also drops its `name:*` sub-plugins.                               |
 
 ## Details
 
@@ -191,8 +193,12 @@ Without `--export` or `--all`, protoshot shoots the default export. A file with 
 protoshot uses your project's own `react`, `react-dom`, Vite config and `@vitejs/plugin-react` when they exist, and falls back to its bundled Vite when you have none. React is never bundled.
 
 - **Vite project:** if you have a `vite.config.*`, protoshot uses it (plugins, aliases, PostCSS).
-- **Astro project** (an `astro.config.*` and no `vite.config.*`): protoshot applies the config's `vite.plugins` (Tailwind, for example) and `vite.resolve.alias`, skipping Cloudflare plugins. Astro integrations and `astro:*` imports are not run.
+- **Astro project** (an `astro.config.*` and no `vite.config.*`): protoshot applies the config's `vite.plugins` (Tailwind, for example) and `vite.resolve.alias`. Astro integrations and `astro:*` imports are not run.
 - **Anything else:** protoshot uses `@vitejs/plugin-react`, your `tsconfig.json` paths and the aliases above. PostCSS config is picked up automatically.
+
+If no plugin brings React's JSX transform, protoshot adds `@vitejs/plugin-react`.
+
+protoshot skips host plugins that start platform runtimes, take over the dev server, switch it to https, or draw overlays into the page: Cloudflare, Netlify, `@hono/vite-dev-server`, Electron, React Router, TanStack Start (and the TanStack Router route generator), Vike, `basic-ssl`, `mkcert`, Laravel, TanStack Devtools, React Scan, `vite-plugin-checker`, `vite-plugin-eslint2` and `vite-plugin-pwa`. Add others with `ignorePlugins`.
 
 ### How it works
 

@@ -14,6 +14,7 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",

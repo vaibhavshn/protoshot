@@ -1,7 +1,7 @@
 import { existsSync, realpathSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
-import type { Plugin, ViteDevServer } from "vite";
+import type { Plugin, UserConfig, ViteDevServer } from "vite";
 import type { Host } from "./host.ts";
 import {
   ENTRY_URL,
@@ -13,8 +13,10 @@ import {
 } from "./page/template.ts";
 import rendererSource from "./renderers/react.ts?raw";
 import { buildAliases } from "./aliases.ts";
-import { findAstroConfig, hasReactPlugin, loadAstroVite } from "./astro.ts";
+import { findAstroConfig, loadAstroVite } from "./astro.ts";
+import { ConfigError } from "./errors.ts";
 import { acquireLock } from "./lock.ts";
+import { flattenPlugins, hasReactPlugin, withoutIgnoredPlugins } from "./plugins.ts";
 import { importFromHost, resolveReact } from "./resolve.ts";
 import type { ShotError } from "./types.ts";
 
@@ -44,6 +46,31 @@ export interface ServerOptions {
 
 function findViteConfig(root: string): string | undefined {
   return VITE_CONFIGS.map((name) => join(root, name)).find((file) => existsSync(file));
+}
+
+/**
+ * Evaluates the host's Vite config here rather than letting Vite load it, so the plugins protoshot
+ * ignores are dropped before any of their hooks run (Cloudflare's `config` hook starts workerd).
+ */
+async function loadViteConfig(
+  vite: typeof import("vite"),
+  root: string,
+  file: string,
+  ignorePlugins: string[] = [],
+): Promise<UserConfig & { plugins: Plugin[] }> {
+  let config: UserConfig;
+  try {
+    const loaded = await vite.loadConfigFromFile(
+      { command: "serve", mode: "development", isSsrBuild: false, isPreview: false },
+      file,
+      root,
+    );
+    config = loaded?.config ?? {};
+  } catch (error) {
+    throw new ConfigError(`${file}: could not be loaded (${(error as Error).message})`);
+  }
+  const plugins = withoutIgnoredPlugins(await flattenPlugins(config.plugins), ignorePlugins);
+  return { ...config, plugins };
 }
 
 function protoshotPlugin(options: ServerOptions, reactMajor: number): Plugin {
@@ -127,14 +154,19 @@ export async function startServer(options: ServerOptions): Promise<Server> {
   const react = resolveReact(host.root);
   const vite = await importFromHost<typeof import("vite")>("vite", host.root);
   const hostConfigFile = findViteConfig(host.root);
-  // Without a Vite config of its own, the host needs React's JSX transform and its tsconfig
-  // aliases. An Astro host keeps its Vite plugins (Tailwind...) in astro.config instead.
+  const { ignorePlugins } = host.config;
+  const hostConfig = hostConfigFile
+    ? await loadViteConfig(vite, host.root, hostConfigFile, ignorePlugins)
+    : undefined;
+  // Without a Vite config of its own, the host needs its tsconfig aliases. An Astro host keeps
+  // its Vite plugins (Tailwind...) in astro.config instead.
   const astroConfigFile = hostConfigFile ? undefined : findAstroConfig(host.root);
   const astro = astroConfigFile
-    ? await loadAstroVite(vite, host.root, astroConfigFile)
+    ? await loadAstroVite(vite, host.root, astroConfigFile, ignorePlugins)
     : { plugins: [], alias: [] };
-  const hostPlugins = hostConfigFile ? [] : astro.plugins;
-  if (!hostConfigFile && !hasReactPlugin(hostPlugins)) {
+  const hostPlugins = hostConfig?.plugins ?? astro.plugins;
+  // Snippets need React's JSX transform; a dropped framework plugin may have been the one bringing it.
+  if (!hasReactPlugin(hostPlugins)) {
     const pluginReact = await importFromHost<{ default: () => Plugin }>(
       "@vitejs/plugin-react",
       host.root,
@@ -174,16 +206,14 @@ export async function startServer(options: ServerOptions): Promise<Server> {
   };
 
   function createViteServer(): Promise<ViteDevServer> {
-    return vite.createServer({
+    const config: UserConfig = {
       // Private to protoshot, so the host's own dev server cache is never disturbed.
       cacheDir: join(host.root, "node_modules", ".vite-protoshot"),
       customLogger: logger,
       root: host.root,
-      configFile: hostConfigFile ?? false,
       appType: "custom",
       clearScreen: false,
       logLevel: "silent",
-      plugins: [...hostPlugins, protoshotPlugin(options, react.major)],
       resolve: { alias: [...buildAliases(host, !hostConfigFile), ...astro.alias] },
       server: {
         host: "127.0.0.1",
@@ -201,6 +231,11 @@ export async function startServer(options: ServerOptions): Promise<Server> {
           react.major >= 18 ? "react-dom/client" : "react-dom",
         ],
       },
+    };
+    return vite.createServer({
+      ...vite.mergeConfig({ ...hostConfig, plugins: [] }, config),
+      configFile: false,
+      plugins: [...hostPlugins, protoshotPlugin(options, react.major)],
     });
   }
 }

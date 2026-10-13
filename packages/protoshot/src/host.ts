@@ -10,6 +10,7 @@ export interface FileConfig {
   wrapper?: string;
   darkClass?: string;
   alias?: Record<string, string>;
+  ignorePlugins?: string[];
 }
 
 export interface HostConfig {
@@ -19,6 +20,8 @@ export interface HostConfig {
   wrapper?: string;
   darkClass?: string;
   alias?: Record<string, string>;
+  /** Host Vite plugin names to drop, on top of protoshot's own list. */
+  ignorePlugins?: string[];
 }
 
 export interface Host {
@@ -52,7 +55,7 @@ export function parseHostConfig(file: string, text: string): FileConfig {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw))
     fail(file, "expected an object");
   const obj = raw as Record<string, unknown>;
-  const known = ["css", "components", "wrapper", "darkClass", "alias"];
+  const known = ["css", "components", "wrapper", "darkClass", "alias", "ignorePlugins"];
   for (const key of Object.keys(obj)) {
     if (!known.includes(key))
       fail(file, `unknown key "${key}" (expected one of ${known.join(", ")})`);
@@ -66,6 +69,12 @@ export function parseHostConfig(file: string, text: string): FileConfig {
     (!Array.isArray(components) || components.some((c) => typeof c !== "string"))
   )
     fail(file, '"components" must be an array of strings');
+  const ignorePlugins = obj.ignorePlugins;
+  if (
+    ignorePlugins !== undefined &&
+    (!Array.isArray(ignorePlugins) || ignorePlugins.some((p) => typeof p !== "string"))
+  )
+    fail(file, '"ignorePlugins" must be an array of strings');
   for (const key of ["wrapper", "darkClass"] as const) {
     if (obj[key] !== undefined && typeof obj[key] !== "string")
       fail(file, `"${key}" must be a string`);
@@ -85,6 +94,7 @@ export function parseHostConfig(file: string, text: string): FileConfig {
     wrapper: obj.wrapper as string | undefined,
     darkClass: obj.darkClass as string | undefined,
     alias: alias as Record<string, string> | undefined,
+    ignorePlugins: ignorePlugins as string[] | undefined,
   };
 }
 
