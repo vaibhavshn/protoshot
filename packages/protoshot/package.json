@@ -2,6 +2,22 @@
   "name": "protoshot",
   "version": "0.0.1",
   "description": "Turn UI source code into a screenshot, for coding agents.",
+  "keywords": [
+    "ai-agent",
+    "claude-code",
+    "cli",
+    "coding-agent",
+    "component",
+    "headless-chrome",
+    "llm",
+    "playwright",
+    "preview",
+    "react",
+    "screenshot",
+    "ui",
+    "visual-feedback",
+    "vite"
+  ],
   "license": "MIT",
   "author": "Vaibhav Shinde (https://github.com/vaibhavshn)",
   "repository": {
