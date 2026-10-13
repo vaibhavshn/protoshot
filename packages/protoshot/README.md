@@ -50,6 +50,7 @@ protoshot -e '<Button>Hi</Button>' --viewport 400x300 # custom size
 protoshot src/components/Button.tsx --all             # every exported component
 protoshot -e '<Button>Hi</Button>' --open             # open the PNG when done
 protoshot https://example.com --full                  # whole page, not just the viewport
+protoshot -C apps/web -e '<Button>Hi</Button>'       # run in a monorepo package
 ```
 
 ### Optional setup
@@ -80,20 +81,21 @@ protoshot -e '<Card><Button>Hi</Button></Card>'
 
 ## All options
 
-| Option             | Meaning                                                                                          |
-| ------------------ | ------------------------------------------------------------------------------------------------ |
-| `--viewport WxH`   | Viewport size. Default `1280x800`.                                                               |
-| `--scale N`        | Device scale factor. Default `2`.                                                                |
-| `--full`           | Capture the whole page, uncropped, instead of cropping to the content.                           |
-| `--export NAME`    | Shoot one component export (`default` for the default export).                                   |
-| `--all`            | Shoot every component export, one shot each.                                                     |
-| `--dark`           | Render in dark mode (see `darkClass` below).                                                     |
-| `--out DIR`        | Write shots to `DIR` instead of the OS temp dir. Also settable with `PROTOSHOT_OUT_DIR`.         |
-| `--wait MS\|SEL`   | Extra wait before capture: milliseconds, or a CSS selector to wait for.                          |
-| `--open`           | Open each shot in the default viewer once written. Off by default.                               |
-| `--json`           | Print one compact JSON object per line, one per shot, instead of bare paths.                     |
-| `--css FILE`       | Stylesheet to load; repeatable or comma-separated. Replaces `protoshot.json` and auto-detection. |
-| `--components DIR` | Component root; repeatable or comma-separated. Replaces `protoshot.json` and auto-detection.     |
+| Option             | Meaning                                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `-C, --cwd DIR`    | Run as if started in `DIR`, like `cd DIR && protoshot ...`. Relative paths (snippet, `--css`, `--components`, `--out`) resolve from `DIR`. |
+| `--viewport WxH`   | Viewport size. Default `1280x800`.                                                                                                         |
+| `--scale N`        | Device scale factor. Default `2`.                                                                                                          |
+| `--full`           | Capture the whole page, uncropped, instead of cropping to the content.                                                                     |
+| `--export NAME`    | Shoot one component export (`default` for the default export).                                                                             |
+| `--all`            | Shoot every component export, one shot each.                                                                                               |
+| `--dark`           | Render in dark mode (see `darkClass` below).                                                                                               |
+| `--out DIR`        | Write shots to `DIR` instead of the OS temp dir. Also settable with `PROTOSHOT_OUT_DIR`.                                                   |
+| `--wait MS\|SEL`   | Extra wait before capture: milliseconds, or a CSS selector to wait for.                                                                    |
+| `--open`           | Open each shot in the default viewer once written. Off by default.                                                                         |
+| `--json`           | Print one compact JSON object per line, one per shot, instead of bare paths.                                                               |
+| `--css FILE`       | Stylesheet to load; repeatable or comma-separated. Replaces `protoshot.json` and auto-detection.                                           |
+| `--components DIR` | Component root; repeatable or comma-separated. Replaces `protoshot.json` and auto-detection.                                               |
 
 Shots are cropped to the rendered content with a small padding. Animations, transitions and the caret are frozen, and protoshot waits for mount, fonts and network idle before capturing, so shots are repeatable.
 

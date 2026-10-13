@@ -53,6 +53,25 @@ test("--dark renders in dark mode", async () => {
   expect(readPng(stdout.trim()).pixel(52, 52)).toEqual([0, 0, 0, 255]);
 });
 
+test("-C runs as if started in another directory", async () => {
+  const host = fixture("react-vite-tailwind");
+  const { code, stdout } = await runCli(
+    ["-C", "react-vite-tailwind", "-e", '<i className="bg-[#00ff00] p-4">x</i>'],
+    { cwd: fixture("") },
+  );
+  expect(code).toBe(0);
+  expect(readPng(stdout.trim()).pixel(42, 42)).toEqual([0, 255, 0, 255]);
+  const file = await runCli(["--cwd", host, "Button.tsx"], { cwd: fixture("") });
+  expect(file.code).toBe(0);
+  expect(existsSync(file.stdout.trim())).toBe(true);
+});
+
+test("a missing --cwd directory is a usage error", async () => {
+  const { code, stderr } = await runCli(["-C", "no-such-dir", "Button.tsx"]);
+  expect(code).toBe(2);
+  expect(stderr).toContain("--cwd");
+});
+
 test("a malformed --viewport is a usage error", async () => {
   const { code, stderr } = await runCli(["Button.tsx", "--viewport", "big"]);
   expect(code).toBe(2);

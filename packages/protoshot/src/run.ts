@@ -1,3 +1,5 @@
+import { statSync } from "node:fs";
+import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { UsageError, ProtoshotError } from "./errors.ts";
 import { installBrowser } from "./install-browser.ts";
@@ -17,6 +19,7 @@ const USAGE = `Usage: protoshot <snippet-file> [options]
                         usually auto-detected on every run, so this is optional)
 
 Options:
+  -C, --cwd DIR    run as if started in DIR (like \`cd DIR && protoshot ...\`)
   --viewport WxH   viewport size (default 1280x800)
   --scale N        device scale factor (default 2)
   --full           capture the whole page, uncropped, instead of cropping to the content
@@ -39,6 +42,7 @@ export async function runCli(argv: string[]): Promise<number> {
       args: argv,
       options: {
         help: { type: "boolean", short: "h" },
+        cwd: { type: "string", short: "C" },
         config: { type: "boolean" },
         eval: { type: "string", short: "e" },
         viewport: { type: "string" },
@@ -60,10 +64,11 @@ export async function runCli(argv: string[]): Promise<number> {
       process.stdout.write(USAGE);
       return 0;
     }
+    const cwd = parseCwd(values.cwd);
     const [target] = positionals;
-    if (target === "install-browser") return await installBrowser(process.cwd());
+    if (target === "install-browser") return await installBrowser(cwd);
     if (target === "init" && values.eval === undefined) {
-      const report = runInit(process.cwd(), Boolean(values.config));
+      const report = runInit(cwd, Boolean(values.config));
       process.stdout.write(`${report.join("\n")}\n`);
       return 0;
     }
@@ -77,6 +82,7 @@ export async function runCli(argv: string[]): Promise<number> {
       return 2;
     }
     const shots = await shoot(input, {
+      cwd,
       viewport: parseViewport(values.viewport),
       scale: parseScale(values.scale),
       full: values.full,
@@ -84,7 +90,7 @@ export async function runCli(argv: string[]): Promise<number> {
       export: values.export,
       all: values.all,
       wait: values.wait,
-      outDir: values.out,
+      outDir: values.out === undefined ? undefined : resolve(cwd, values.out),
       css: splitList(values.css),
       components: splitList(values.components),
     });
@@ -147,6 +153,14 @@ async function readStdin(): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
   return Buffer.concat(chunks).toString("utf8");
+}
+
+function parseCwd(value: string | undefined) {
+  if (value === undefined) return process.cwd();
+  const dir = resolve(value);
+  if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory())
+    throw new UsageError(`--cwd expects a directory (got "${value}")`);
+  return dir;
 }
 
 function parseViewport(value: string | undefined) {
