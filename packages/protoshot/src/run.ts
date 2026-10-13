@@ -12,8 +12,9 @@ const USAGE = `Usage: protoshot <snippet-file> [options]
        protoshot -            read the snippet from stdin
        protoshot -e '<jsx>'   use the argument as the snippet
        protoshot install-browser   install managed Chromium (when no system Chrome)
-       protoshot init         optional: write protoshot.json, update .gitignore and AGENTS.md/CLAUDE.md
-                        (CSS and component folders are usually auto-detected on every run)
+       protoshot init         add the protoshot section to AGENTS.md/CLAUDE.md
+       protoshot init --config   also write protoshot.json (CSS and component folders are
+                        usually auto-detected on every run, so this is optional)
 
 Options:
   --viewport WxH   viewport size (default 1280x800)
@@ -38,6 +39,7 @@ export async function runCli(argv: string[]): Promise<number> {
       args: argv,
       options: {
         help: { type: "boolean", short: "h" },
+        config: { type: "boolean" },
         eval: { type: "string", short: "e" },
         viewport: { type: "string" },
         scale: { type: "string" },
@@ -61,7 +63,7 @@ export async function runCli(argv: string[]): Promise<number> {
     const [target] = positionals;
     if (target === "install-browser") return await installBrowser(process.cwd());
     if (target === "init" && values.eval === undefined) {
-      const report = await runInit(process.cwd(), Boolean(process.stdin.isTTY));
+      const report = runInit(process.cwd(), Boolean(values.config));
       process.stdout.write(`${report.join("\n")}\n`);
       return 0;
     }

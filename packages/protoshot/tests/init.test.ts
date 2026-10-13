@@ -32,7 +32,7 @@ afterEach(() => {
 
 test("`protoshot init` in react-plain writes a config that renders with no edits", async () => {
   const host = scratchHost("react-plain");
-  const init = await runCli(["init"], { cwd: host });
+  const init = await runCli(["init", "--config"], { cwd: host });
   expect(init.code).toBe(0);
   expect(JSON.parse(readFileSync(join(host, "protoshot.json"), "utf8"))).toEqual({
     css: ["src/styles.css"],
@@ -44,7 +44,7 @@ test("`protoshot init` in react-plain writes a config that renders with no edits
 
 test('`protoshot init` finds the file containing @import "tailwindcss"', async () => {
   const host = scratchHost("react-vite-tailwind");
-  await runCli(["init"], { cwd: host });
+  await runCli(["init", "--config"], { cwd: host });
   expect(JSON.parse(readFileSync(join(host, "protoshot.json"), "utf8")).css).toEqual([
     "src/index.css",
   ]);
@@ -53,17 +53,17 @@ test('`protoshot init` finds the file containing @import "tailwindcss"', async (
 test("`protoshot init` keeps an existing protoshot.json", async () => {
   const host = scratchHost("react-plain");
   writeFileSync(join(host, "protoshot.json"), '{"css":["src/other.css"]}');
-  const { code } = await runCli(["init"], { cwd: host });
+  const { code } = await runCli(["init", "--config"], { cwd: host });
   expect(code).toBe(0);
   expect(readFileSync(join(host, "protoshot.json"), "utf8")).toBe('{"css":["src/other.css"]}');
 });
 
-test("`protoshot init` adds .protoshot/ to .gitignore once", async () => {
+test("`protoshot init` neither writes protoshot.json nor touches .gitignore by default", async () => {
   const host = scratchHost("react-plain");
   writeFileSync(join(host, ".gitignore"), "node_modules");
   await runCli(["init"], { cwd: host });
-  await runCli(["init"], { cwd: host });
-  expect(readFileSync(join(host, ".gitignore"), "utf8")).toBe("node_modules\n.protoshot/\n");
+  expect(existsSync(join(host, "protoshot.json"))).toBe(false);
+  expect(readFileSync(join(host, ".gitignore"), "utf8")).toBe("node_modules");
 });
 
 test("`protoshot init` adds the agent section to existing AGENTS.md and CLAUDE.md, once", async () => {
