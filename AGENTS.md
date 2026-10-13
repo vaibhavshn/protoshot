@@ -25,3 +25,12 @@ release. Add a tool name to select part of the graph. For example, run
 - [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
 
 <!--VITE PLUS END-->
+
+# protoshot monorepo
+
+- `packages/protoshot`: the published CLI/library (TypeScript, ESM, `.ts` import extensions). Entry points are `src/cli.ts` → `src/run.ts` (arg parsing, output, exit codes) → `src/shoot.ts` (snippet shots) or `src/shoot-url.ts` (page URLs). `src/host.ts` resolves the user's project and `protoshot.json`; `src/server.ts` runs the temporary Vite dev server; `src/capture.ts` and `src/driver/` drive the browser.
+- `fixtures/react-app`: demo app that consumes protoshot via `workspace:*`. Not published.
+- `packages/protoshot/tests/fixtures/*`: standalone sample projects for tests. Excluded from lint, format and test discovery.
+- User-facing behavior (options, exit codes, `protoshot.json`) is documented in `packages/protoshot/README.md`. Update it when you change the CLI.
+- Run `vp check` and `vp test` from `packages/protoshot`. Tests launch a real browser and are slow, so run a single file while iterating.
+- Use the `catalog:` protocol in `pnpm-workspace.yaml` for shared dependency versions.
